@@ -1,7 +1,7 @@
 # ng6-golden-layout
 
 [![Downloads](https://img.shields.io/npm/dm/@embedded-enterprises/ng6-golden-layout.svg)](https://www.npmjs.com/package/@embedded-enterprises/ng6-golden-layout) [![NPM Version](https://img.shields.io/npm/v/@embedded-enterprises/ng6-golden-layout.svg)](https://www.npmjs.com/package/@embedded-enterprises/ng6-golden-layout)
-[![NPM Size](https://img.shields.io/bundlephobia/min/@embedded-enterprises/ng6-golden-layout.svg)](https://www.npmjs.com/package/@embedded-enterprises/ng6-golden-layout)
+[![NPM Size](https://img.shields.io/bundlephobia/min/@embedded-enterprises/ng6-golden-layout.svg)](https://www.npmjs.com/package/@embedded-enterprises/ng6-golden-layout) [![Liberapay](https://img.shields.io/liberapay/receives/embeddedenterprises.svg?logo=liberapay)](https://liberapay.com/EmbeddedEnterprises/donate)
 
 This project aims to provide a complete solution for embedding golden-layout within an angular 6 application.
 
@@ -38,7 +38,7 @@ const config: GoldenLayoutConfiguration = { ... };
 export class AppModule {}
 ```
 
-After that it should work right away out of the box
+After that it should work right away out of the box.
 
 ## Current state
 
@@ -48,14 +48,15 @@ This binding is stable but by far not feature complete.
 
 - Automatic service Injection
 - Synchronize Windows in GoldenLayoutService
-- Make Configuration more robust.
+- Make Configuration more robust (it currently fails if it can't find a pane)
 - Provide possibility to spawn and register new Panes on the fly
+- Improve redocking algorithm
 
 ## Hacking
 
 1. Fork the repository
 2. Create a feature/bugfix branch
-3. If you want to work on the binding, use `build.sh` to create the npm package and link it into the example project.
+3. If you want to work on the binding, use `build.sh` or `npm run build` to create the npm package and link it into the example project.
 4. If you want to work on the example project, just use ng serve to have the dev-server.
 5. If you are happy, make a PR.
 
