@@ -1,10 +1,13 @@
 import {
+  isDevMode,
   ComponentFactoryResolver,
   HostListener,
   ViewContainerRef,
   ElementRef,
   Component,
   OnInit,
+  OnDestroy,
+  ApplicationRef,
   Type,
   Input,
   NgZone,
@@ -63,21 +66,76 @@ const COMPONENT_REF_KEY = '$componentRef';
   ],
   template: `<div class="ng-golden-layout-root" #glroot></div>`
 })
-export class GoldenLayoutComponent implements OnInit, ComponentInitCallbackFactory {
+export class GoldenLayoutComponent implements OnInit, OnDestroy, ComponentInitCallbackFactory {
   private goldenLayout: GoldenLayout;
+  private topWindow: Window;
+  private isChildWindow: boolean;
+  private unloaded = false;
 
   @ViewChild('glroot') private el: ElementRef;
 
   constructor(private glService: GoldenLayoutService,
               private viewContainer: ViewContainerRef,
+              private appref: ApplicationRef,
               private componentFactoryResolver: ComponentFactoryResolver,
               private ngZone: NgZone,
-              private readonly injector: Injector) { }
+              private readonly injector: Injector) {
+    this.topWindow = glService.getRootWindow();
+    this.isChildWindow = glService.isChildWindow();
+    if (this.isChildWindow) {
+      window.document.title = window.document.URL;
+      (console as any).__log = console.log;
+      console.log = this.topWindow.console.log;
+    }
+    if (isDevMode()) console.log(`Create@${this.isChildWindow ? 'child' : 'root'}!`);
+  }
 
   public ngOnInit(): void {
+    if (isDevMode()) console.log(`Init@${this.isChildWindow ? 'child' : 'root'}!`);
+    let anyWin = this.topWindow as any;
+    if (!this.isChildWindow) {
+      anyWin.__apprefs = [];
+    }
+
+    // attach the application reference to the root window, save the original 'tick' method
+    anyWin.__apprefs.push(this.appref);
+    (this.appref as any).__tick = this.appref.tick;
+
+    this.appref.tick = (): void => {
+      for (const ar of (this.topWindow as any).__apprefs) {
+        ar._zone.run(() => ar.__tick());
+      }
+    };
+
     this.glService.getState().then((layout: any) => {
       this._createLayout(layout);
     });
+  }
+
+  public ngOnDestroy(): void {
+    if (isDevMode()) console.log(`Destroy@${this.isChildWindow ? 'child' : 'root'}!`);
+    if (this.isChildWindow) {
+      console.log = (console as any).__log;
+    }
+    this.unloaded = true;
+    // restore the original tick method.
+    // this appens in two cases:
+    // either the window is closed, after that it's not important to restore the tick method
+    // or within the root window, where we HAVE to restore the original tick method
+    this.appref.tick = (this.appref as any).__tick;
+  }
+
+  @HostListener('window:beforeunload')
+  public unloadHandler(): void {
+    if (isDevMode()) console.log(`Unload@${this.isChildWindow ? 'child' : 'root'}`);
+    if (this.unloaded) {
+      return;
+    }
+    this.unloaded = true;
+    if (this.isChildWindow) { // if the top window is unloaded, the whole application is destroyed.
+      const index = (this.topWindow as any).__apprefs.indexOf(this.appref);
+      (this.topWindow as any).__apprefs.splice(index, 1);
+    }
   }
 
   private _createLayout(layout: any): void {

@@ -52,4 +52,12 @@ export class GoldenLayoutService {
 
     return Promise.resolve(this.config.defaultLayout);
   }
+
+  public isChildWindow(): boolean {
+    return !!window.opener;
+  }
+
+  public getRootWindow(): Window {
+    return window.opener || window;
+  }
 }

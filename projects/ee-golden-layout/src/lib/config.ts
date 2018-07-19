@@ -23,6 +23,7 @@ export interface GoldenLayoutConfiguration {
    * Initial component layout configuration.
    */
   defaultLayout: GoldenLayout.Config;
+
 }
 
 export const GoldenLayoutConfiguration = new InjectionToken('GoldenLayoutConfiguration');

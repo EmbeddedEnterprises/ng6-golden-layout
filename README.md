@@ -47,7 +47,6 @@ This binding is stable but by far not feature complete.
 ## Roadmap
 
 - Automatic service Injection
-- Synchronize Windows in GoldenLayoutService
 - Make Configuration more robust (it currently fails if it can't find a pane)
 - Provide possibility to spawn and register new Panes on the fly
 - Improve redocking algorithm

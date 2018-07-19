@@ -35,9 +35,19 @@ const config: GoldenLayoutConfiguration = {
   defaultLayout: {
     content: [
       {
-        type: 'component',
-        componentName: 'app-test',
-        title: 'Test',
+        type: "row",
+        content: [
+          {
+            type: 'component',
+            componentName: 'app-test',
+            title: 'Test 1',
+          },
+          {
+            type: 'component',
+            componentName: 'app-test',
+            title: 'Test 2',
+          }
+        ]
       }
     ]
   }
