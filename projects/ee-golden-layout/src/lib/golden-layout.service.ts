@@ -17,10 +17,13 @@ export interface ComponentInitCallbackFactory {
 
 @Injectable()
 export class GoldenLayoutService {
+  private _layout: GoldenLayout = null;
+
   constructor(@Inject(GoldenLayoutConfiguration) public readonly config: GoldenLayoutConfiguration,
               @Optional() @Inject(GoldenLayoutStateStore) private readonly stateStore: StateStore) {}
 
   public initialize(goldenLayout: GoldenLayout, componentInitCallbackFactory: ComponentInitCallbackFactory) {
+    this._layout = goldenLayout;
     this.config.components.forEach((componentConfig: ComponentConfiguration) => {
       const componentInitCallback = componentInitCallbackFactory.createComponentInitCallback(componentConfig.component);
       goldenLayout.registerComponent(componentConfig.componentName, componentInitCallback);
@@ -51,6 +54,43 @@ export class GoldenLayoutService {
     }
 
     return Promise.resolve(this.config.defaultLayout);
+  }
+
+  public getRegisteredComponents(): ComponentConfiguration[] {
+    return this.config.components;
+  }
+
+  public createNewComponent(comp: ComponentConfiguration) {
+    // create content item
+    const content = this._layout.createContentItem({type: 'component', componentName: comp.componentName }) as any;
+    console.log(content);
+    // search for the first lm-stack (a stack should be there always.)
+    const root = this._layout.root;
+    let element: GoldenLayout.ContentItem = null;
+    if (!root.contentItems || root.contentItems.length === 0) {
+      element = root;
+    } else {
+      element = this.findStack(root.contentItems);
+    }
+    if (element === null) {
+      throw new Error("this should never happen!");
+    }
+    element.addChild(content);
+  }
+
+  private findStack(contentItems: GoldenLayout.ContentItem[]): GoldenLayout.ContentItem {
+    if (!contentItems) {
+      return null;
+    }
+    for (const x of contentItems) {
+      if (x.type === 'stack') {
+        return x;
+      }
+      const s = this.findStack(x.contentItems);
+      if (s !== null) {
+        return s;
+      }
+    }
   }
 
   public isChildWindow(): boolean {

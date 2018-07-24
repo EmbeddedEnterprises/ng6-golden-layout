@@ -9,11 +9,16 @@ import {
 } from '@embedded-enterprises/ng6-golden-layout';
 
 @Component({
-  template: `<golden-layout-root></golden-layout-root>`,
+  template: `<div class="spawn-new"></div><golden-layout-root></golden-layout-root>`,
   selector: `app-root`,
 })
 export class RootComponent {
-  constructor() { }
+  // test delayed component construction
+  constructor(private srv: GoldenLayoutService) {
+    setTimeout(() => {
+      srv.createNewComponent(srv.getRegisteredComponents()[1]);
+    }, 1000);
+  }
 
 }
 @Component({
@@ -24,13 +29,25 @@ export class TestComponent {
   constructor() { }
 
 }
+@Component({
+  template: `<h1>Test2</h1>`,
+  selector: `app-tested`,
+})
+export class TestedComponent {
+  constructor() { }
+
+}
 
 const config: GoldenLayoutConfiguration = {
   components: [
     {
       component: TestComponent,
       componentName: 'app-test'
-    }
+    },
+    {
+      component: TestedComponent,
+      componentName: 'app-tested',
+    },
   ],
   defaultLayout: {
     content: [
@@ -54,8 +71,8 @@ const config: GoldenLayoutConfiguration = {
 }
 
 @NgModule({
-  declarations: [RootComponent, TestComponent],
-  entryComponents: [TestComponent],
+  declarations: [RootComponent, TestComponent, TestedComponent],
+  entryComponents: [TestComponent, TestedComponent],
   imports: [
     BrowserModule,
     BrowserAnimationsModule,

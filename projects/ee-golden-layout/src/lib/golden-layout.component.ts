@@ -95,6 +95,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy, ComponentInitCa
     let anyWin = this.topWindow as any;
     if (!this.isChildWindow) {
       anyWin.__apprefs = [];
+      anyWin.__injector = this.injector;
     }
 
     // attach the application reference to the root window, save the original 'tick' method
