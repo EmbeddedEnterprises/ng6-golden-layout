@@ -63,7 +63,6 @@ export class GoldenLayoutService {
   public createNewComponent(comp: ComponentConfiguration) {
     // create content item
     const content = this._layout.createContentItem({type: 'component', componentName: comp.componentName }) as any;
-    console.log(content);
     // search for the first lm-stack (a stack should be there always.)
     const root = this._layout.root;
     let element: GoldenLayout.ContentItem = null;
