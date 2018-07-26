@@ -5,7 +5,7 @@
 
 This project aims to provide a complete solution for embedding golden-layout within an angular 6 application.
 
-Thanks to the awesome people at [<img alt="BrowserStack" width="200" src="https://3fxtqy18kygf3on3bu39kh93-wpengine.netdna-ssl.com/wp-content/uploads/2018/03/header-logo.svg">](https://www.browserstack.com) which make testing for IE/Edge possible!
+Thanks to the awesome people at [<img alt="BrowserStack" width="200" src="bs-logo.png">](https://www.browserstack.com) which make testing for IE/Edge possible!
 
 ## Usage
 
