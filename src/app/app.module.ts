@@ -1,12 +1,23 @@
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { NgModule, Component } from '@angular/core';
+import { NgModule, Component, Injectable } from '@angular/core';
 import * as $ from 'jquery';
 import {
   GoldenLayoutModule,
   GoldenLayoutService,
-  GoldenLayoutConfiguration
+  GoldenLayoutConfiguration,
+  MultiWindowService,
 } from '@embedded-enterprises/ng6-golden-layout';
+
+@MultiWindowService<TestService>()
+@Injectable()
+export class TestService {
+  public id: string;
+  constructor() {
+    this.id = '_' + Math.random().toString(36).substr(2, 9);
+    console.log(`Creating testService, id: ${this.id}`);
+  }
+}
 
 @Component({
   template: `<div class="spawn-new"></div><golden-layout-root></golden-layout-root>`,
@@ -22,11 +33,11 @@ export class RootComponent {
 
 }
 @Component({
-  template: `<h1>Test</h1>`,
+  template: `<h1>Test</h1><span>{{test.id}}</span>`,
   selector: `app-test`,
 })
 export class TestComponent {
-  constructor() { }
+  constructor(public test: TestService) { }
 
 }
 @Component({
@@ -78,7 +89,7 @@ const config: GoldenLayoutConfiguration = {
     BrowserAnimationsModule,
     GoldenLayoutModule.forRoot(config),
   ],
-  providers: [],
+  providers: [TestService,],
   bootstrap: [RootComponent]
 })
 export class AppModule { }
