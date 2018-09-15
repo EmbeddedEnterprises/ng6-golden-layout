@@ -89,7 +89,7 @@ const config: GoldenLayoutConfiguration = {
     BrowserAnimationsModule,
     GoldenLayoutModule.forRoot(config),
   ],
-  providers: [TestService,],
+  providers: [TestService],
   bootstrap: [RootComponent]
 })
 export class AppModule { }

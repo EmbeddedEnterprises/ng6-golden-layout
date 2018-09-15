@@ -42,13 +42,40 @@ export class AppModule {}
 
 After that it should work right away out of the box.
 
+### Synchronizing your services across multiple browser windows
+
+All services used within your app can be chosen to be either scoped to the current window (default) or to be the same instance across all windows (like a singleton).
+
+To use services across multiple windows, you need to initialize the multi-window compatibility layer.
+
+```ts
+// in main.ts
+import { MultiWindowInit } from '@embedded-enterprises/ng6-golden-layout';
+
+// call MultiWindowInit before bootstrapModule().
+MultiWindowInit();
+```
+
+To synchronize a service, use the `@MultiWindowService()` decorator:
+
+```ts
+@MultiWindowService<YourService>()
+@Injectable()
+class YourService {
+  // implementation
+}
+```
+
+**NOTE:** This only works once per service instance, it will destroy scoped services!
+
+
 ## Current state
 
 This binding is stable but by far not feature complete.
 
 ## Roadmap
 
-- Automatic service Injection
+- ~~Automatic service Injection~~
 - Make Configuration more robust (it currently fails if it can't find a pane)
 - Provide possibility to spawn and register new Panes on the fly
 - Improve redocking algorithm
