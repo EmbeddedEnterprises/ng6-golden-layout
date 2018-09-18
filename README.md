@@ -15,6 +15,13 @@ Install via npm:
 $ npm install --save @embedded-enterprises/ng6-golden-layout
 ```
 
+A manual install of package dependencies will be necessary, too
+
+```sh
+$ npm install --save golden-layout@1.5.7 jquery
+$ npm install --save-dev @types/jquery
+```
+
 Importing and configuration:
 ```ts
 import { GoldenLayoutModule, GoldenLayoutConfiguration } from '@embedded-enterprises/ng6-golden-layout';
@@ -23,7 +30,7 @@ import * as $ from 'jquery';
 // It is required to have JQuery as global in the window object.
 window['$'] = $;
 
-const config: GoldenLayoutConfiguration = { ... };
+const config: GoldenLayoutConfiguration = { /* TODO */ };
 
 @NgModule({
   imports: [
@@ -34,10 +41,33 @@ const config: GoldenLayoutConfiguration = { ... };
     // Add your components here
   ],
   entryComponents: [
-    // Add your components which are used as panels in golden-layout also here.
+    // TODO Add your components which are used as panels in golden-layout also here.
   ],
 })
 export class AppModule {}
+```
+
+In the `@NgModule` decorator, under `entryComponents` list all the components that should be rendered within golden layout.
+
+Define the `GoldenLayoutConfiguration` object:
+- Under `components` list all components that will be rendered with golden layout.
+- Under `defaultLayout` construct the layout configuration as for vanilla GoldenLayout:
+    http://golden-layout.com/tutorials/getting-started.html
+
+Add `<golden-layout-root></golden-layout-root>` to your HTML.
+
+Finally import GoldenLayout styles into `styles.css`
+
+```
+@import "~golden-layout/src/css/goldenlayout-base.css";
+@import "~golden-layout/src/css/goldenlayout-light-theme.css";
+
+body, html {
+  width: 100vw;
+  height: 100vh;
+  padding: 0;
+  margin: 0;
+}
 ```
 
 After that it should work right away out of the box.
