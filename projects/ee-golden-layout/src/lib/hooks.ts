@@ -1,4 +1,5 @@
 import * as GoldenLayout from 'golden-layout';
+import {Tab} from 'golden-layout';
 
 /**
  * Hook invoked after a component's container or the document has been resized.
@@ -37,5 +38,5 @@ export interface GlOnTab {
   /**
    * Invoked when the 'tab' event fires on the component's parent GoldenLayout Container.
    */
-  glOnTab(): void;
+  glOnTab(tab: Tab): void;
 }
