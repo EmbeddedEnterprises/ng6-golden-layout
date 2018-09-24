@@ -223,8 +223,8 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy, ComponentInitCa
     }
 
     if (implementsGlOnTab(component)) {
-      container.on('tab', () => {
-        component.glOnTab();
+      container.on('tab', (tab) => {
+        component.glOnTab(tab);
       });
     }
   }
