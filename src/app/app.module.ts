@@ -9,11 +9,20 @@ import {
   MultiWindowService,
 } from '@embedded-enterprises/ng6-golden-layout';
 
+@MultiWindowService<FooService>()
+@Injectable()
+export class FooService {
+  constructor() {
+    console.log(`Create FooService`);
+  }
+}
+
 @MultiWindowService<TestService>()
 @Injectable()
 export class TestService {
   public id: string;
-  constructor() {
+  constructor(private _foo: FooService) {
+    console.log(`FooService: `, _foo);
     this.id = '_' + Math.random().toString(36).substr(2, 9);
     console.log(`Creating testService, id: ${this.id}`);
   }
@@ -89,7 +98,7 @@ const config: GoldenLayoutConfiguration = {
     BrowserAnimationsModule,
     GoldenLayoutModule.forRoot(config),
   ],
-  providers: [TestService],
+  providers: [TestService, FooService],
   bootstrap: [RootComponent]
 })
 export class AppModule { }
