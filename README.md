@@ -72,6 +72,28 @@ body, html {
 
 After that it should work right away out of the box.
 
+### Accessing the underlying GoldenLayout API
+
+The original GoldenLayout API may be obtained through the Angular dependency injection mechanism in any of the components rendered with GoldenLayout.
+
+
+```
+import * as GoldenLayout from 'golden-layout';
+import { Component, Inject } from '@angular/core';
+import { GoldenLayoutContainer } from '@embedded-enterprises/ng6-golden-layout';
+
+@Component({})
+export class TestComponent {
+
+  constructor(
+    private goldenLayout: GoldenLayout,
+    @Inject(GoldenLayoutContainer) private container: GoldenLayout.Container
+  ) { }
+}
+```
+
+These objects can then be used to manipulate the GoldenLayout.
+
 ### Synchronizing your services across multiple browser windows
 
 All services used within your app can be chosen to be either scoped to the current window (default) or to be the same instance across all windows (like a singleton).
