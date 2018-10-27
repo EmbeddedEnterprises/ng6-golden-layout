@@ -1,6 +1,6 @@
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { NgModule, Component, Injectable } from '@angular/core';
+import { NgModule, Component, Injectable, OnInit, OnDestroy } from '@angular/core';
 import * as $ from 'jquery';
 import {
   GoldenLayoutModule,
@@ -35,9 +35,11 @@ export class TestService {
 export class RootComponent {
   // test delayed component construction
   constructor(private srv: GoldenLayoutService) {
-    setTimeout(() => {
-      srv.createNewComponent(srv.getRegisteredComponents()[1]);
-    }, 1000);
+    if (!window.opener) {
+      setTimeout(() => {
+        srv.createNewComponent(srv.getRegisteredComponents()[1]);
+      }, 1000);
+    }
   }
 
 }
@@ -47,15 +49,20 @@ export class RootComponent {
 })
 export class TestComponent {
   constructor(public test: TestService) { }
-
 }
 @Component({
   template: `<h1>Test2</h1>`,
   selector: `app-tested`,
 })
-export class TestedComponent {
+export class TestedComponent implements OnInit, OnDestroy {
   constructor() { }
 
+  public ngOnInit(): void {
+    (window.opener || window).console.log(`ngoninit`);
+  }
+  public ngOnDestroy(): void {
+    (window.opener || window).console.log(`ngondestroy`);
+  }
 }
 
 const config: GoldenLayoutConfiguration = {

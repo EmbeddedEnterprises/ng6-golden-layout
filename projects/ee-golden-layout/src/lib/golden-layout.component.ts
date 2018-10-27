@@ -54,6 +54,18 @@ function implementsGlOnTab(obj: any): obj is GlOnTab {
   return typeof obj === 'object' && typeof obj.glOnTab === 'function';
 }
 
+class Deferred<T> {
+  public promise: Promise<T>
+  public resolve: (val?: T) => void;
+  public reject: (err: any) => void;
+  constructor() {
+    this.promise = new Promise((resolve, reject) => {
+      this.resolve = resolve;
+      this.reject = reject;
+    })
+  }
+}
+
 const COMPONENT_REF_KEY = '$componentRef';
 
 @Component({
@@ -71,6 +83,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy, ComponentInitCa
   private topWindow: Window;
   private isChildWindow: boolean;
   private unloaded = false;
+  private onUnloaded = new Deferred<void>();
 
   @ViewChild('glroot') private el: ElementRef;
 
@@ -132,6 +145,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy, ComponentInitCa
     if (this.unloaded) {
       return;
     }
+    this.onUnloaded.resolve();
     this.unloaded = true;
     if (this.isChildWindow) { // if the top window is unloaded, the whole application is destroyed.
       const index = (this.topWindow as any).__apprefs.indexOf(this.appref);
@@ -169,7 +183,20 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy, ComponentInitCa
         // Bind the new component to container's client DOM element.
         container.getElement().append($(componentRef.location.nativeElement));
         self._bindEventHooks(container, componentRef.instance);
+        let destroyed = false;
         container.on('destroy', () => {
+          if (destroyed) {
+            return;
+          }
+          destroyed = true;
+          $(componentRef.location.nativeElement).remove();
+          componentRef.destroy();
+        });
+        self.onUnloaded.promise.then(() => {
+          if (destroyed) {
+            return;
+          }
+          destroyed = true;
           $(componentRef.location.nativeElement).remove();
           componentRef.destroy();
         });
