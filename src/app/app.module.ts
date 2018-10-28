@@ -1,13 +1,16 @@
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { NgModule, Component, Injectable, OnInit, OnDestroy } from '@angular/core';
+import { NgModule, Component, Injectable, OnInit, OnDestroy, Inject } from '@angular/core';
 import * as $ from 'jquery';
+
 import {
   GoldenLayoutModule,
   GoldenLayoutService,
   GoldenLayoutConfiguration,
   MultiWindowService,
   GlOnClose,
+  FallbackComponent,
+  FailedComponent,
 } from '@embedded-enterprises/ng6-golden-layout';
 
 @MultiWindowService<FooService>()
@@ -38,7 +41,10 @@ export class RootComponent {
   constructor(private srv: GoldenLayoutService) {
     if (!window.opener) {
       setTimeout(() => {
-        srv.createNewComponent(srv.getRegisteredComponents()[1]);
+        srv.createNewComponent({
+          componentName: 'app-tested',
+          component: null,
+        });
       }, 1000);
     }
   }
@@ -51,6 +57,7 @@ export class RootComponent {
 export class TestComponent {
   constructor(public test: TestService) { }
 }
+
 @Component({
   template: `<h1>Test2</h1>`,
   selector: `app-tested`,
@@ -77,15 +84,20 @@ export class TestedComponent implements OnInit, OnDestroy, GlOnClose {
   }
 }
 
+/* Provide a fallback for components which couldn't be found. */
+@Component({
+  template: `<h1>Failed to load {{componentName}}</h1>`,
+  selector: `app-failed`,
+})
+export class FailComponent {
+constructor(@Inject(FailedComponent) public componentName: string) { }
+}
+
 const config: GoldenLayoutConfiguration = {
   components: [
     {
       component: TestComponent,
       componentName: 'app-test'
-    },
-    {
-      component: TestedComponent,
-      componentName: 'app-tested',
     },
   ],
   defaultLayout: {
@@ -110,14 +122,21 @@ const config: GoldenLayoutConfiguration = {
 }
 
 @NgModule({
-  declarations: [RootComponent, TestComponent, TestedComponent],
-  entryComponents: [TestComponent, TestedComponent],
+  declarations: [RootComponent, TestComponent, TestedComponent, FailComponent],
+  entryComponents: [TestComponent, FailComponent, TestedComponent],
   imports: [
     BrowserModule,
     BrowserAnimationsModule,
     GoldenLayoutModule.forRoot(config),
   ],
-  providers: [TestService, FooService],
+  providers: [
+    TestService,
+    FooService,
+    {
+      provide: FallbackComponent,
+      useValue: FailComponent,
+    },
+  ],
   bootstrap: [RootComponent]
 })
 export class AppModule { }

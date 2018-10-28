@@ -120,6 +120,52 @@ class YourService {
 
 **NOTE:** This only works once per service instance, it will destroy scoped services!
 
+### Provide a fallback for invalid component configurations
+
+If you want to remove a component type, but don't want your users to clear the entire state, you can use the fallback
+component.
+
+It works by creating a component, like this:
+
+```ts
+import { FailedComponent } from '@embedded-enterprises/ng6-golden-layout';
+@Component({
+  selector: `app-invalid`,
+  template: `<h1>Component {{componentName}} couldn't be found`,
+})
+class InvalidComponent {
+  // The InjectionToken `FailedComponent` provides the name of the failed component.
+  // You can use this to implement arbitrarily complex error pages.
+  constructor(@Inject(FailedComponent) public componentName: string) { }
+}
+```
+
+After that, you inject the previously created component into the GoldenLayout binding like this:
+
+```ts
+// In your main NgModule
+import { FallbackComponent } from '@embedded-enterprises/ng6-golden-layout';
+@NgModule({
+  providers: [
+    //...
+    {
+      provide: FallbackComponent,
+      useValue: InvalidComponent, // DON'T USE `useClass` or `useFactory` here!
+    },
+  ],
+  declarations: [
+    //...
+    InvalidComponent,
+  ],
+  entryComponents: [
+    //...
+    InvalidComponent,
+  ],
+})
+export class MyModule { }
+```
+
+When you have setup this, the binding will automatically create this component whenever a panel type couldn't be found.
 
 ## Current state
 
@@ -128,7 +174,7 @@ This binding is stable but by far not feature complete.
 ## Roadmap
 
 - ~~Automatic service Injection~~
-- Make Configuration more robust (it currently fails if it can't find a pane)
+- ~~Make Configuration more robust (it currently fails if it can't find a pane)~~
 - Provide possibility to spawn and register new Panes on the fly
 - Improve redocking algorithm
 

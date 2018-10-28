@@ -5,3 +5,4 @@ export * from './lib/hooks';
 export * from './lib/module';
 export * from './lib/state';
 export * from './lib/multiwindow-service';
+export * from './lib/fallback';

@@ -1,6 +1,7 @@
 import {
   isDevMode,
   ComponentFactoryResolver,
+  ComponentFactory,
   HostListener,
   ViewContainerRef,
   ElementRef,
@@ -10,10 +11,12 @@ import {
   ApplicationRef,
   Type,
   Input,
+  Optional,
+  Inject,
   NgZone,
   InjectionToken,
   Injector,
-  ViewChild
+  ViewChild,
 } from '@angular/core';
 import * as GoldenLayout from 'golden-layout';
 
@@ -23,6 +26,10 @@ import {
   ComponentInitCallbackFactory,
   ComponentInitCallback
 } from './golden-layout.service';
+import {
+  FallbackComponent,
+  FailedComponent,
+} from './fallback';
 
 export const GoldenLayoutContainer = new InjectionToken('GoldenLayoutContainer');
 export const GoldenLayoutComponentState = new InjectionToken('GoldenLayoutComponentState');
@@ -91,7 +98,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy, ComponentInitCa
   private isChildWindow: boolean;
   private unloaded = false;
   private onUnloaded = new Deferred<void>();
-
+  private fallbackType: ComponentInitCallback = null;
   @ViewChild('glroot') private el: ElementRef;
 
   constructor(private glService: GoldenLayoutService,
@@ -99,9 +106,13 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy, ComponentInitCa
               private appref: ApplicationRef,
               private componentFactoryResolver: ComponentFactoryResolver,
               private ngZone: NgZone,
-              private readonly injector: Injector) {
+              private readonly injector: Injector,
+              @Optional() @Inject(FallbackComponent) private readonly fallbackComponent: any) {
     this.topWindow = glService.getRootWindow();
     this.isChildWindow = glService.isChildWindow();
+    if (!!fallbackComponent) {
+      this.fallbackType = this.createComponentInitCallback(fallbackComponent);
+    }
     if (this.isChildWindow) {
       window.document.title = window.document.URL;
       (console as any).__log = console.log;
@@ -162,7 +173,13 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy, ComponentInitCa
 
   private _createLayout(layout: any): void {
     this.goldenLayout = new GoldenLayout(layout, $(this.el.nativeElement));
-
+    this.goldenLayout.getComponent = (type) => {
+      const component = (this.goldenLayout as any)._components[type] || this.fallbackType;
+      if (!component) {
+        throw new Error(`Unknown component "${type}"`);
+      }
+      return component;
+    };
     // Register all golden-layout components.
     this.glService.initialize(this.goldenLayout, this);
 
@@ -184,7 +201,13 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy, ComponentInitCa
       self.ngZone.run(() => {
         // Create an instance of the angular component.
         const factory = self.componentFactoryResolver.resolveComponentFactory(componentType);
-        const injector = self._createComponentInjector(container, componentState);
+        let failedComponent: string = null;
+        if (componentType === self.fallbackComponent) {
+          // Failed to find the component constructor **AND** we have a fallback component defined,
+          // so lookup the failed component's name and inject it into the fallback component.
+          failedComponent = (container as any)._config.componentName;
+        }
+        const injector = self._createComponentInjector(container, componentState, failedComponent);
         const componentRef = self.viewContainer.createComponent(factory, undefined, injector);
 
         // Bind the new component to container's client DOM element.
@@ -215,8 +238,12 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy, ComponentInitCa
    * Creates an injector capable of injecting the GoldenLayout object,
    * component container, and initial component state.
    */
-  private _createComponentInjector(container: GoldenLayout.Container, componentState: any): Injector {
-    return Injector.create([
+  private _createComponentInjector(
+    container: GoldenLayout.Container,
+    componentState: any,
+    failed: string | null,
+  ): Injector {
+    const providers = [
       {
         provide: GoldenLayoutContainer,
         useValue: container
@@ -229,7 +256,14 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy, ComponentInitCa
         provide: GoldenLayout,
         useValue: this.goldenLayout
       },
-    ], this.injector);
+    ];
+    if (!!failed) {
+      providers.push({
+        provide: FailedComponent,
+        useValue: failed,
+      });
+    }
+    return Injector.create(providers, this.injector);
   }
 
   /**
