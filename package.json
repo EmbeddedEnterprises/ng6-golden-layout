@@ -1,6 +1,6 @@
 {
   "name": "ng6-golden-layout-testbed",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "license": "BSD-3-Clause",
   "scripts": {
     "ng": "ng",

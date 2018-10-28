@@ -60,9 +60,14 @@ export class GoldenLayoutService {
     return this.config.components;
   }
 
-  public createNewComponent(comp: ComponentConfiguration) {
+  public createNewComponent(comp: ComponentConfiguration, title?: string, state?: any) {
     // create content item
-    const content = this._layout.createContentItem({type: 'component', componentName: comp.componentName }) as any;
+    const content = this._layout.createContentItem({
+      type: 'component',
+      componentName: comp.componentName,
+      componentState: state,
+      title: title,
+    }) as any;
     // search for the first lm-stack (a stack should be there always.)
     const root = this._layout.root;
     let element: GoldenLayout.ContentItem = null;
