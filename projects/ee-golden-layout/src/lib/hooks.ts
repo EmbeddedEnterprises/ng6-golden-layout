@@ -40,3 +40,14 @@ export interface GlOnTab {
    */
   glOnTab(tab: Tab): void;
 }
+
+/**
+ * Hook invoked when a component is closed.
+ */
+export interface GlOnClose {
+  /**
+   * Invoked when the tab will be closed, may cancel the close operation asynchronously.
+   * Resolve the promise to actually close the component, reject to prevent the close operation.
+   */
+   glOnClose(): Promise<void>;
+}

@@ -7,6 +7,7 @@ import {
   GoldenLayoutService,
   GoldenLayoutConfiguration,
   MultiWindowService,
+  GlOnClose,
 } from '@embedded-enterprises/ng6-golden-layout';
 
 @MultiWindowService<FooService>()
@@ -54,7 +55,7 @@ export class TestComponent {
   template: `<h1>Test2</h1>`,
   selector: `app-tested`,
 })
-export class TestedComponent implements OnInit, OnDestroy {
+export class TestedComponent implements OnInit, OnDestroy, GlOnClose {
   constructor() { }
 
   public ngOnInit(): void {
@@ -62,6 +63,17 @@ export class TestedComponent implements OnInit, OnDestroy {
   }
   public ngOnDestroy(): void {
     (window.opener || window).console.log(`ngondestroy`);
+  }
+
+  public glOnClose(): Promise<void> {
+    console.log(`glOnClose`);
+    return new Promise((resolve, reject) => {
+      console.log(`glonclose promise`);
+      setTimeout(() => {
+        console.log(`resolving`);
+        resolve()
+      }, 1000);
+    });
   }
 }
 

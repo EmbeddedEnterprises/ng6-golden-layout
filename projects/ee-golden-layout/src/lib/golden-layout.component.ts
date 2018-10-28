@@ -17,7 +17,7 @@ import {
 } from '@angular/core';
 import * as GoldenLayout from 'golden-layout';
 
-import { GlOnResize, GlOnShow, GlOnHide, GlOnTab } from './hooks';
+import { GlOnResize, GlOnShow, GlOnHide, GlOnTab, GlOnClose } from './hooks';
 import {
   GoldenLayoutService,
   ComponentInitCallbackFactory,
@@ -52,6 +52,13 @@ function implementsGlOnHide(obj: any): obj is GlOnHide {
  */
 function implementsGlOnTab(obj: any): obj is GlOnTab {
   return typeof obj === 'object' && typeof obj.glOnTab === 'function';
+}
+
+/**
+ * Type guard which determines if a component implements the GlOnClose interface.
+ */
+function implementsGlOnClose(obj: any): obj is GlOnClose {
+  return typeof obj === 'object' && typeof obj.glOnClose === 'function';
 }
 
 class Deferred<T> {
@@ -253,6 +260,39 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy, ComponentInitCa
       container.on('tab', (tab) => {
         component.glOnTab(tab);
       });
+    }
+
+    if (implementsGlOnClose(component)) {
+      let hookEstablished = false;
+      container.on('tab', (tab) => {
+        /* GoldenLayout SHOULD send a tabEvent when the component is placed within a tab control, giving
+           us access to the tab object, which allows us to patch the close handler to actually call the
+           right close option.
+        */
+        if (hookEstablished) {
+          return;
+        }
+        hookEstablished = true;
+        tab.closeElement.off('click');
+        const originalClose = tab._onCloseClick.bind(tab);
+        tab._onCloseClick = (ev) => {
+          ev.stopPropagation();
+          tab.contentItem.container.close();
+        };
+        tab._onCloseClickFn = tab._onCloseClick.bind(tab);
+        tab.closeElement.click(tab._onCloseClickFn);
+      });
+
+      const containerClose = container.close.bind(container);
+      container.close = () => {
+        console.log("Container close:", container);
+        if (!(container as any)._config.isClosable) {
+          return false;
+        }
+        component.glOnClose().then(() => {
+          containerClose();
+        }, () => { /* Prevent close, don't care about rejections */ });
+      };
     }
   }
 }
