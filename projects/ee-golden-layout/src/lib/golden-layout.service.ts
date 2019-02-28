@@ -98,10 +98,14 @@ export class GoldenLayoutService {
   }
 
   public isChildWindow(): boolean {
-    return !!window.opener;
+    try {
+      return !!window.opener && !!window.opener.location.href;
+    } catch (e) {
+      return false;
+    }
   }
 
   public getRootWindow(): Window {
-    return window.opener || window;
+    return this.isChildWindow() ? window.opener : window;
   }
 }
