@@ -88,6 +88,41 @@
           }
         }
       }
+    },
+    "ngx-golden-layout": {
+      "projectType": "library",
+      "root": "projects/ngx-golden-layout",
+      "sourceRoot": "projects/ngx-golden-layout/src",
+      "prefix": "lib",
+      "architect": {
+        "build": {
+          "builder": "@angular-devkit/build-ng-packagr:build",
+          "options": {
+            "tsConfig": "projects/ngx-golden-layout/tsconfig.lib.json",
+            "project": "projects/ngx-golden-layout/ng-package.json"
+          }
+        },
+        "test": {
+          "builder": "@angular-devkit/build-angular:karma",
+          "options": {
+            "main": "projects/ngx-golden-layout/src/test.ts",
+            "tsConfig": "projects/ngx-golden-layout/tsconfig.spec.json",
+            "karmaConfig": "projects/ngx-golden-layout/karma.conf.js"
+          }
+        },
+        "lint": {
+          "builder": "@angular-devkit/build-angular:tslint",
+          "options": {
+            "tsConfig": [
+              "projects/ngx-golden-layout/tsconfig.lib.json",
+              "projects/ngx-golden-layout/tsconfig.spec.json"
+            ],
+            "exclude": [
+              "**/node_modules/**"
+            ]
+          }
+        }
+      }
     }},
   "defaultProject": "ngx-golden-layout-testbed"
 }

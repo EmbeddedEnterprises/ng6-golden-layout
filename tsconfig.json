@@ -17,6 +17,14 @@
     "lib": [
       "es2018",
       "dom"
-    ]
+    ],
+    "paths": {
+      "ngx-golden-layout": [
+        "dist/ngx-golden-layout"
+      ],
+      "ngx-golden-layout/*": [
+        "dist/ngx-golden-layout/*"
+      ]
+    }
   }
 }
