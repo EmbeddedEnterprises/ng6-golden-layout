@@ -2,6 +2,16 @@ export function MultiWindowInit(): void {
   if (!window.opener) {
     (window as any).__services = new (window as any).Map();
     (window as any).__serviceConstructors = new (window as any).Map();
+
+    // Electron compatibility, when we have a global 'require' in our window, we throw it into the new window context
+    if ((window as any).require) {
+      const originalWindowOpen = window.open.bind(window);
+      window.open = (url?: string, target?: string, features?: string, replace?: boolean): Window => {
+        const newWindow = originalWindowOpen(url, target, features, replace);
+        newWindow.require = (window as any).require;
+        return newWindow;
+      };
+    }
   }
 }
 
