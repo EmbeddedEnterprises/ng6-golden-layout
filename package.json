@@ -31,6 +31,7 @@
     "@angular/language-service": "~8.0.0",
     "@types/jquery": "^3.3.29",
     "@types/node": "~8.9.4",
+    "core-js": "^3.1.4",
     "golden-layout": "^1.5.7",
     "jquery": "^3.3.1",
     "ng-packagr": "^5.1.0",

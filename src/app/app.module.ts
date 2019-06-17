@@ -1,16 +1,52 @@
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { NgModule, Component, Injectable, OnInit, OnDestroy, Inject } from '@angular/core';
-
+import { NgModule, Component, Injectable, OnInit, OnDestroy, Inject, ViewChild } from '@angular/core';
+import * as GoldenLayout from 'golden-layout';
 import {
   GoldenLayoutModule,
-  GoldenLayoutService,
-  GoldenLayoutConfiguration,
   MultiWindowService,
   GlOnClose,
   FallbackComponent,
   FailedComponent,
+  ComponentType,
+  GoldenLayoutComponent,
 } from 'ngx-golden-layout';
+import { BehaviorSubject } from 'rxjs';
+
+const CONFIG: GoldenLayout.Config = {
+  content: [{
+    type: "row",
+    content: [
+      {
+        type: 'component',
+        componentName: 'app-test',
+        title: 'Test 1',
+      },
+      {
+        type: 'component',
+        componentName: 'app-test',
+        title: 'Test 2',
+      }
+    ]
+  }]
+};
+const CONFIG2: GoldenLayout.Config = {
+  content: [{
+    type: "column",
+    content: [
+      {
+        type: 'component',
+        componentName: 'app-test',
+        title: 'Test 1',
+      },
+      {
+        type: 'component',
+        componentName: 'app-test',
+        title: 'Test 2',
+      }
+    ]
+  }]
+};
 
 @MultiWindowService<FooService>()
 @Injectable()
@@ -32,20 +68,18 @@ export class TestService {
 }
 
 @Component({
-  template: `<div class="spawn-new"></div><golden-layout-root></golden-layout-root>`,
+  template: `<div class="spawn-new"></div><golden-layout-root #comp [layout]="layout$" (stateChanged)="stateChange()"></golden-layout-root>`,
   selector: `app-root`,
 })
 export class RootComponent {
-  // test delayed component construction
-  constructor(private srv: GoldenLayoutService) {
-    if (!window.opener) {
-      setTimeout(() => {
-        srv.createNewComponent({
-          componentName: 'app-tested',
-          component: null,
-        });
-      }, 1000);
-    }
+  public layout$ = new BehaviorSubject(CONFIG);
+  @ViewChild(GoldenLayoutComponent, { static: true }) layout: GoldenLayoutComponent;
+
+  constructor() {
+    setTimeout(() => this.layout$.next(CONFIG2), 10000);
+  }
+  stateChange() {
+    console.log('this.stateChange', this.layout.getSerializableState());
   }
 }
 @Component({
@@ -88,48 +122,26 @@ export class TestedComponent implements OnInit, OnDestroy, GlOnClose {
   selector: `app-failed`,
 })
 export class FailComponent {
-constructor(@Inject(FailedComponent) public componentName: string) { }
+  constructor(@Inject(FailedComponent) public componentName: string) { }
 }
 
-const config: GoldenLayoutConfiguration = {
-  components: [
-    {
-      component: TestComponent,
-      componentName: 'app-test'
-    },
-    {
-      component: TestedComponent,
-      componentName: 'app-tested'
-    }
-  ],
-  defaultLayout: {
-    content: [
-      {
-        type: "row",
-        content: [
-          {
-            type: 'component',
-            componentName: 'app-test',
-            title: 'Test 1',
-          },
-          {
-            type: 'component',
-            componentName: 'app-test',
-            title: 'Test 2',
-          }
-        ]
-      }
-    ]
+const COMPONENTS: ComponentType[] = [
+  {
+    name: 'app-test',
+    type: TestComponent,
+  },
+  {
+    name: 'app-tested',
+    type: TestedComponent,
   }
-}
-
+];
 @NgModule({
   declarations: [RootComponent, TestComponent, TestedComponent, FailComponent],
   entryComponents: [TestComponent, FailComponent, TestedComponent],
   imports: [
     BrowserModule,
     BrowserAnimationsModule,
-    GoldenLayoutModule.forRoot(config),
+    GoldenLayoutModule.forRoot(COMPONENTS),
   ],
   providers: [
     TestService,

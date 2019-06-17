@@ -15,55 +15,22 @@ import {
   InjectionToken,
   Injector,
   ViewChild,
+  Input,
+  Output,
+  EventEmitter,
 } from '@angular/core';
 import * as GoldenLayout from 'golden-layout';
-
-import { GlOnResize, GlOnShow, GlOnHide, GlOnTab, GlOnClose } from './hooks';
-import {
-  GoldenLayoutService,
-  ComponentInitCallbackFactory,
-  ComponentInitCallback
-} from './golden-layout.service';
-import {
-  FallbackComponent,
-  FailedComponent,
-} from './fallback';
+import { ComponentRegistryService } from './component-registry.service';
+import { FallbackComponent, FailedComponent } from './fallback';
+import { RootWindowService } from './root-window.service';
+import { Observable, Subscription } from 'rxjs';
+import { implementsGlOnResize, implementsGlOnShow, implementsGlOnHide, implementsGlOnTab, implementsGlOnClose } from './type-guards';
 
 export const GoldenLayoutContainer = new InjectionToken('GoldenLayoutContainer');
 export const GoldenLayoutComponentState = new InjectionToken('GoldenLayoutComponentState');
-/**
- * Type guard which determines if a component implements the GlOnResize interface.
- */
-function implementsGlOnResize(obj: any): obj is GlOnResize {
-  return typeof obj === 'object' && typeof obj.glOnResize === 'function';
-}
 
-/**
- * Type guard which determines if a component implements the GlOnShow interface.
- */
-function implementsGlOnShow(obj: any): obj is GlOnShow {
-  return typeof obj === 'object' && typeof obj.glOnShow === 'function';
-}
-
-/**
- * Type guard which determines if a component implements the GlOnHide interface.
- */
-function implementsGlOnHide(obj: any): obj is GlOnHide {
-  return typeof obj === 'object' && typeof obj.glOnHide === 'function';
-}
-
-/**
- * Type guard which determines if a component implements the GlOnTab interface.
- */
-function implementsGlOnTab(obj: any): obj is GlOnTab {
-  return typeof obj === 'object' && typeof obj.glOnTab === 'function';
-}
-
-/**
- * Type guard which determines if a component implements the GlOnClose interface.
- */
-function implementsGlOnClose(obj: any): obj is GlOnClose {
-  return typeof obj === 'object' && typeof obj.glOnClose === 'function';
+interface ComponentInitCallback extends Function {
+  (container: GoldenLayout.Container, componentState: any): void;
 }
 
 class Deferred<T> {
@@ -74,11 +41,9 @@ class Deferred<T> {
     this.promise = new Promise((resolve, reject) => {
       this.resolve = resolve;
       this.reject = reject;
-    })
+    });
   }
 }
-
-const COMPONENT_REF_KEY = '$componentRef';
 
 @Component({
   selector: 'golden-layout-root',
@@ -90,27 +55,47 @@ const COMPONENT_REF_KEY = '$componentRef';
   ],
   template: `<div class="ng-golden-layout-root" #glroot></div>`
 })
-export class GoldenLayoutComponent implements OnInit, OnDestroy, ComponentInitCallbackFactory {
-  private goldenLayout: GoldenLayout;
-  private topWindow: Window;
-  private isChildWindow: boolean;
-  private unloaded = false;
-  private onUnloaded = new Deferred<void>();
-  private fallbackType: ComponentInitCallback = null;
+export class GoldenLayoutComponent implements OnInit, OnDestroy {
+
+  @Input() layout: Observable<GoldenLayout.Config>;
+  @Output() stateChanged = new EventEmitter();
+
   @ViewChild('glroot', { static: true }) private el: ElementRef;
 
-  constructor(private glService: GoldenLayoutService,
-              private viewContainer: ViewContainerRef,
-              private appref: ApplicationRef,
-              private componentFactoryResolver: ComponentFactoryResolver,
-              private ngZone: NgZone,
-              private readonly injector: Injector,
-              @Optional() @Inject(FallbackComponent) private readonly fallbackComponent: any) {
-    this.topWindow = glService.getRootWindow();
-    this.isChildWindow = glService.isChildWindow();
-    if (!!fallbackComponent) {
-      this.fallbackType = this.createComponentInitCallback(fallbackComponent);
+  private goldenLayout: GoldenLayout = null;
+  private onUnloaded = new Deferred<void>();
+  pushStateChange = () => this.stateChanged.emit();
+
+  private topWindow: Window;
+  private isChildWindow: boolean;
+
+  private fallbackType: ComponentInitCallback = null;
+  private layoutSubscription: Subscription;
+
+  @HostListener('window:resize')
+  public onResize(): void {
+    if (this.goldenLayout) {
+      this.goldenLayout.updateSize();
     }
+  }
+
+  constructor(
+    private rootWindow: RootWindowService,
+    private componentRegistry: ComponentRegistryService,
+    private viewContainer: ViewContainerRef,
+    private appref: ApplicationRef,
+    private componentFactoryResolver: ComponentFactoryResolver,
+    private ngZone: NgZone,
+    private readonly injector: Injector,
+    @Optional() @Inject(FallbackComponent) private readonly fallbackComponent: any
+  ) {
+    this.topWindow = this.rootWindow.getRootWindow();
+    this.isChildWindow = this.rootWindow.isChildWindow();
+
+    if (!!this.fallbackComponent) {
+      this.fallbackType = this.buildConstructor(this.fallbackComponent);
+    }
+
     if (this.isChildWindow) {
       window.document.title = window.document.URL;
       (console as any).__log = console.log;
@@ -121,6 +106,10 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy, ComponentInitCa
 
   public ngOnInit(): void {
     if (isDevMode()) console.log(`Init@${this.isChildWindow ? 'child' : 'root'}!`);
+
+    // Multi-Window compatibility.
+    // We need to synchronize all appRefs that could tick
+    // Store them in a global array and also overwrite the injector using the injector from the main window.
     let anyWin = this.topWindow as any;
     if (!this.isChildWindow) {
       anyWin.__apprefs = [];
@@ -131,68 +120,93 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy, ComponentInitCa
     anyWin.__apprefs.push(this.appref);
     (this.appref as any).__tick = this.appref.tick;
 
+    // Overwrite the tick method running all apprefs in their zones.
     this.appref.tick = (): void => {
       for (const ar of (this.topWindow as any).__apprefs) {
         ar._zone.run(() => ar.__tick());
       }
     };
 
-    this.glService.getState().then((layout: any) => {
-      this._createLayout(layout);
+    this.layoutSubscription = this.layout.subscribe(layout => {
+      this.destroyGoldenLayout();
+      this.initializeGoldenLayout(layout);
     });
   }
 
-  public ngOnDestroy(): void {
-    if (isDevMode()) console.log(`Destroy@${this.isChildWindow ? 'child' : 'root'}!`);
+  // Map beforeunload to onDestroy to simplify the handling
+  @HostListener('window:beforeunload', ['$event'])
+  public ngOnDestroy(ev?: Event): void {
+    if (isDevMode()) {
+      console.log(`Destroy@${this.isChildWindow ? 'child' : 'root'}!`);
+    }
+
+    // TBD: If we're the root window, destroy the golden layout instance if we have one
+    this.layoutSubscription.unsubscribe();
+    if (ev) {
+      // The event is defined -> window unload, destroy all components recursively
+      // Use a promise to defer component destruction in case the child window is closed.
+      this.onUnloaded.resolve();
+    }
+
     if (this.isChildWindow) {
+      const index = (this.topWindow as any).__apprefs.indexOf(this.appref);
+      (this.topWindow as any).__apprefs.splice(index, 1);
       console.log = (console as any).__log;
     }
-    this.unloaded = true;
+
     // restore the original tick method.
     // this appens in two cases:
     // either the window is closed, after that it's not important to restore the tick method
     // or within the root window, where we HAVE to restore the original tick method
     this.appref.tick = (this.appref as any).__tick;
+    this.destroyGoldenLayout();
   }
 
-  @HostListener('window:beforeunload')
-  public unloadHandler(): void {
-    if (isDevMode()) console.log(`Unload@${this.isChildWindow ? 'child' : 'root'}`);
-    if (this.unloaded) {
+  public getSerializableState(): any {
+    if (this.goldenLayout) {
+      return this.goldenLayout.toConfig();
+    }
+    return null;
+  }
+
+  private destroyGoldenLayout(): void {
+    if (!this.goldenLayout) {
       return;
     }
-    this.onUnloaded.resolve();
-    this.unloaded = true;
-    if (this.isChildWindow) { // if the top window is unloaded, the whole application is destroyed.
-      const index = (this.topWindow as any).__apprefs.indexOf(this.appref);
-      (this.topWindow as any).__apprefs.splice(index, 1);
-    }
+    (<GoldenLayout.EventEmitter>(<any>this.goldenLayout)).off('stateChanged', this.pushStateChange);
+    this.goldenLayout.destroy();
+    this.goldenLayout = null;
   }
 
-  private _createLayout(layout: any): void {
+  private initializeGoldenLayout(layout: any): void {
     this.goldenLayout = new GoldenLayout(layout, $(this.el.nativeElement));
+
+    // Overwrite the 'getComponent' method to dynamically resolve JS components.
     this.goldenLayout.getComponent = (type) => {
-      const component = (this.goldenLayout as any)._components[type] || this.fallbackType;
+      if (isDevMode()) {
+        console.log(`Resolving component ${type}`);
+      }
+      const actualComponent = this.componentRegistry.componentMap().get(type);
+      let component = this.fallbackType;
+      if (actualComponent) {
+        component = this.buildConstructor(actualComponent);
+      }
       if (!component) {
         throw new Error(`Unknown component "${type}"`);
       }
       return component;
     };
-    // Register all golden-layout components.
-    this.glService.initialize(this.goldenLayout, this);
 
     // Initialize the layout.
     this.goldenLayout.init();
+    (<GoldenLayout.EventEmitter>(<any>this.goldenLayout)).on('stateChanged', this.pushStateChange);
   }
 
-  @HostListener('window:resize', ['$event'])
-  public onResize(event: any): void {
-    if (this.goldenLayout) {
-      this.goldenLayout.updateSize();
-    }
-  }
-
-  public createComponentInitCallback(componentType: Type<any>): ComponentInitCallback {
+  /**
+   * Build a 'virtual' constructor which is used to pass the components to goldenLayout
+   * @param componentType
+   */
+  private buildConstructor(componentType: Type<any>): ComponentInitCallback {
     // Can't use an ES6 lambda here, since it is not a constructor
     const self = this;
     return function (container: GoldenLayout.Container, componentState: any) {
@@ -212,22 +226,17 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy, ComponentInitCa
         container.getElement().append($(componentRef.location.nativeElement));
         self._bindEventHooks(container, componentRef.instance);
         let destroyed = false;
-        container.on('destroy', () => {
-          if (destroyed) {
-            return;
+        const destroyFn = () => {
+          if (!destroyed) {
+            destroyed = true;
+            $(componentRef.location.nativeElement).remove();
+            componentRef.destroy();
           }
-          destroyed = true;
-          $(componentRef.location.nativeElement).remove();
-          componentRef.destroy();
-        });
-        self.onUnloaded.promise.then(() => {
-          if (destroyed) {
-            return;
-          }
-          destroyed = true;
-          $(componentRef.location.nativeElement).remove();
-          componentRef.destroy();
-        });
+        };
+
+        // Listen to containerDestroy and window beforeunload, preventing a double-destroy
+        container.on('destroy', destroyFn);
+        self.onUnloaded.promise.then(destroyFn);
       });
     };
   }
@@ -306,7 +315,6 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy, ComponentInitCa
         }
         hookEstablished = true;
         tab.closeElement.off('click');
-        const originalClose = tab._onCloseClick.bind(tab);
         tab._onCloseClick = (ev) => {
           ev.stopPropagation();
           tab.contentItem.container.close();
