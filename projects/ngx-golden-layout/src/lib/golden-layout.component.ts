@@ -28,6 +28,7 @@ import { implementsGlOnResize, implementsGlOnShow, implementsGlOnHide, implement
 
 export const GoldenLayoutContainer = new InjectionToken('GoldenLayoutContainer');
 export const GoldenLayoutComponentState = new InjectionToken('GoldenLayoutComponentState');
+export const GoldenLayoutEventHub = new InjectionToken('GoldenLayoutEventHub');
 
 interface ComponentInitCallback extends Function {
   (container: GoldenLayout.Container, componentState: any): void;
@@ -169,6 +170,42 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     return null;
   }
 
+  public createNewComponent(config: GoldenLayout.ComponentConfig) {
+    if (!this.goldenLayout) {
+      throw new Error("golden layout is not initialized");
+    }
+    const content = this.goldenLayout.createContentItem({
+      ...config,
+      type: 'component',
+    }) as any;
+    const root = this.goldenLayout.root;
+    let element: GoldenLayout.ContentItem = null;
+    if (!root.contentItems || root.contentItems.length === 0) {
+      element = root;
+    } else {
+      element = this.findStack(root.contentItems);
+    }
+    if (element === null) {
+      throw new Error("this should never happen!");
+    }
+    element.addChild(content);
+  }
+
+  private findStack(contentItems: GoldenLayout.ContentItem[]): GoldenLayout.ContentItem {
+    if (!contentItems) {
+      return null;
+    }
+    for (const x of contentItems) {
+      if (x.type === 'stack') {
+        return x;
+      }
+      const s = this.findStack(x.contentItems);
+      if (s !== null) {
+        return s;
+      }
+    }
+  }
+
   private destroyGoldenLayout(): void {
     if (!this.goldenLayout) {
       return;
@@ -253,15 +290,19 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     const providers = [
       {
         provide: GoldenLayoutContainer,
-        useValue: container
+        useValue: container,
       },
       {
         provide: GoldenLayoutComponentState,
-        useValue: componentState
+        useValue: componentState,
       },
       {
         provide: GoldenLayout,
-        useValue: this.goldenLayout
+        useValue: this.goldenLayout,
+      },
+      {
+        provide: GoldenLayoutEventHub,
+        useValue: this.goldenLayout.eventHub,
       },
     ];
     if (!!failed) {
