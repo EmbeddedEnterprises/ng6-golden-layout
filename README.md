@@ -51,7 +51,7 @@ const componentTypes: ComponentType[] = [{
 @NgModule({
   imports: [
     //...
-    GoldenLayoutModule.forRoot(config),
+    GoldenLayoutModule.forRoot(componentTypes),
   ],
   declarations: [
     // Add your panel components here
