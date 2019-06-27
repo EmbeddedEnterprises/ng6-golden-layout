@@ -5,20 +5,20 @@
 
 This project aims to provide a complete solution for embedding golden-layout within an angular 6+ application.
 
-This package got a major rewrite for Angular 8+, in order to be able to use the official angular library tooling.
-This document describes the Angular 8+ API, for the angular 6-7 API, please have a look at the ng6/ng7 branches.
-To prevent confusion, the package also got renamed:
-- For Angular 6/7 use `@embedded-enterprises/ng6-golden-layout@0.0.12`
-- For Angular 8 and a drop-in compatible API (easier upgrade) use `ngx-golden-layout@0.0.12`
-- To use the new API, use `ngx-golden-layout@0.0.13`
+- This package got a major rewrite for Angular 8+, in order to be able to use the official angular library tooling.
+- This document describes the Angular 8+ API, for the angular 6-7 API, please have a look at the ng6/ng7 branches.
+- To prevent confusion, the package also got renamed:
+  - For Angular 6/7 use `@embedded-enterprises/ng6-golden-layout@0.0.12`
+  - For Angular 8 and a drop-in compatible API (easier upgrade) use `ngx-golden-layout@0.0.12`
+  - To use the new API, use `ngx-golden-layout@0.0.13`
 
 Thanks to the awesome people at https://www.browserstack.com which make testing for IE/Edge possible!
 
-## Usage
-
-### Complete example
+## Complete example
 
 For a complete example, head over to the https://github.com/EmbeddedEnterprises/ngx-golden-layout-electron repo.
+
+## Detailed Usage
 
 Install via npm:
 
