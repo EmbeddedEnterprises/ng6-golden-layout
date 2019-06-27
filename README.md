@@ -141,15 +141,18 @@ When you use angular routing, angular will manipulate the URLs on the client sid
 
 Let's assume your project looks like the following:
 ```
-|-> main.ts
-|-> index.html
-|-> app
-| |-> app.module.ts
-| |-> login.component.ts
-| |-> main.component.ts
+root
+|->src
+| |-> main.ts
+| |-> index.html
+| |-> app
+| | |-> app.module.ts
+| | |-> login.component.ts
+| | |-> main.component.ts
+| | x
 | x
+|-> angular.json
 x
-angular.json
 ```
 
 Basically we need to implement three things:
@@ -185,50 +188,65 @@ if (!window.opener) {
   - For larger applications, you should organize your code into smaller NgModules which provide better scalability, since you don't need to add all declarations twice
   - At the end you should have something like the following:
 ```
+const COMPONENTS = [
+  AppDockingComponent,
+  // Your dockable components,
+];
+
 @NgModule({
-  declarations: [
-    // Your components
-  ],
-  entryComponents: [
-    // Your entry components
-  ],
-  imports: [
-    // Your modules,
-    RouterModule.forRoot(ROUTES),
-  ],
+  declarations: COMPONENTS,
+  entryComponents: COMPONENTS,
+  exports: COMPONENTS,
+  imports: [CommonModule, GoldenLayoutModule.forRoot(CONFIG), /* Additional modules */],
+})
+export class AppComponentsModule {}
+
+@NgModule({
+  imports: [RouterModule.forRoot(ROUTES), AppComponentsModule],
+  declarations: [AppMainComponent],
+  entryComponents: [AppMainComponent],
   providers: [
     // Your providers
-    { provide: ENVIRONMENT_TOKEN, useValue: environment },
   ],
-  bootstrap: [
-    AppMainComponent,
-  ],
+  bootstrap: [AppMainComponent],
 })
 export class AppModule { }
 
 @NgModule({
-  declarations: [
-    // Your components
-  ],
-  entryComponents: [
-    // Your entry components
-  ],
-  imports: [
-    // Your modules,
-    // DON'T ADD ROUTING HERE!
-  ],
+  imports: [AppComponentsModule],
   providers: [
     // Your providers
-    { provide: ENVIRONMENT_TOKEN, useValue: environment },
   ],
-  bootstrap: [
-    AppDockingComponent, // Use your docking component here.
-  ],
+  bootstrap: [AppDockingComponent], // Use your docking component here.
 })
 export class AppChildWindowModule { }
 ```
 
+5. Fixing the production build, two more changes are neccessary:
+  - set `useHash: true` in your call to `RouterModule.forRoot(ROUTES, { useHash: true })`
+  - if you don't set this, your index.html won't be found in production builds.
+  - add the following lines to your angular.json under `projects -> $NAME -> architect -> build -> configurations -> production -> fileReplacements`:
+  ```json
+  {
+    "replace": "src/main.ts",
+    "with": "src/main.prod",
+  }
+  ```
+  - copy your `src/main.ts` into `src/main.prod` (**Don't** name `main.prod` `main.prod.ts` otherwise you will get build errors!)
+  - edit the main.prod, do some search and replace:
+    - replace `platformBrowserDynamic` by `platformBrowser`
+    - replace `platform-browser-dynamic` by `platform-browser`
+    - replace `bootstrapModule` by `bootstrapModuleFactory`
+    - replace `AppModule` by `AppModuleNgFactory`
+    - replace `AppChildWindowModule` by `AppChildWindowModuleNgFactory`
+    - replace `app.module` by `app.module.ngfactory`
+  - Run a production build
+  - Should work now.
+
+
 The effect of the changes done above is that we skip routing based on whether we're in a child window (no routing) or in the main window. When the route changes and the golden layout main-window component is destroyed, all child windows are disposed automatically.
+
+To see a full-featured example including routing, have a look [here](https://github.com/EmbeddedEnterprises/ngx-golden-layout-electron).
 
 
 ### Synchronizing your services across multiple browser windows
