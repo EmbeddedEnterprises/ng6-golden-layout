@@ -137,7 +137,99 @@ These objects can then be used to manipulate the GoldenLayout.
 
 ### Usage with angular routing
 
-- To be documented.
+When you use angular routing, angular will manipulate the URLs on the client side and therefore destroy navigation for your application when you're opening a popout. The solution is fairly simple: we disable the angular routing functionality for child windows.
+
+Let's assume your project looks like the following:
+```
+|-> main.ts
+|-> index.html
+|-> app
+| |-> app.module.ts
+| |-> login.component.ts
+| |-> main.component.ts
+| x
+x
+angular.json
+```
+
+Basically we need to implement three things:
+- Remove the static component initialization
+- Add a second entry-NgModule to your app, where routing is disabled
+- Select the routing-disabled NgModule when we're detecting that we're in a child window.
+
+To proceed, we need the following information:
+- The selector for your main component, where you bootstrap your app (lets call it `<app-main>`)
+- The selector for your component where you initialize the golden-layout instance (lets call it `<app-docking>`)
+
+#### Required Steps
+
+1. Open up your index.html, remove the selector of the main component (`<app-main>`)
+2. Open up your main.ts, find the lines where angular is bootstrapped (usually at the end of the file), remove them.
+3. Add the following code, replace the selectors with your selectors.
+```ts
+if (!window.opener) {
+  const baseRootElem = document.createElement('app-main');
+  const script = document.body.querySelector('script');
+  document.body.insertBefore(baseRootElem, script);
+  platformBrowserDynamic().bootstrapModule(AppModule);
+} else {
+  const baseAppElem = document.createElement('app-docking');
+  const script = document.body.querySelector('script');
+  document.body.insertBefore(baseAppElem, script);
+  platformBrowserDynamic().bootstrapModule(AppChildWindowModule);
+}
+```
+4. Open up your app/app.module.ts.
+  - Depending on your application, you usually have an AppModule where all your components are added and your `<app-main>` component is set as bootstrap.
+  - Create a second module, call it AppChildWindowModule, add your components, import required modules (**without the router module**) and set the `<app-docking>` component as bootstrap.
+  - For larger applications, you should organize your code into smaller NgModules which provide better scalability, since you don't need to add all declarations twice
+  - At the end you should have something like the following:
+```
+@NgModule({
+  declarations: [
+    // Your components
+  ],
+  entryComponents: [
+    // Your entry components
+  ],
+  imports: [
+    // Your modules,
+    RouterModule.forRoot(ROUTES),
+  ],
+  providers: [
+    // Your providers
+    { provide: ENVIRONMENT_TOKEN, useValue: environment },
+  ],
+  bootstrap: [
+    AppMainComponent,
+  ],
+})
+export class AppModule { }
+
+@NgModule({
+  declarations: [
+    // Your components
+  ],
+  entryComponents: [
+    // Your entry components
+  ],
+  imports: [
+    // Your modules,
+    // DON'T ADD ROUTING HERE!
+  ],
+  providers: [
+    // Your providers
+    { provide: ENVIRONMENT_TOKEN, useValue: environment },
+  ],
+  bootstrap: [
+    AppDockingComponent, // Use your docking component here.
+  ],
+})
+export class AppChildWindowModule { }
+```
+
+The effect of the changes done above is that we skip routing based on whether we're in a child window (no routing) or in the main window. When the route changes and the golden layout main-window component is destroyed, all child windows are disposed automatically.
+
 
 ### Synchronizing your services across multiple browser windows
 
