@@ -135,7 +135,9 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy, ComponentInitCa
     this.unloaded = true;
     if (this.isChildWindow) { // if the top window is unloaded, the whole application is destroyed.
       const index = (this.topWindow as any).__apprefs.indexOf(this.appref);
-      (this.topWindow as any).__apprefs.splice(index, 1);
+      if (index>-1) {
+        (this.topWindow as any).__apprefs.splice(index, 1);
+      }
     }
   }
 
