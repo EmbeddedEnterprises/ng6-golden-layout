@@ -57,10 +57,6 @@ const componentTypes: ComponentType[] = [{
     // Add your panel components here
     MyFancyAngularComponent,
   ],
-  entryComponents: [
-    // Also add your panel components here.
-    MyFancyAngularComponent,
-  ],
 })
 export class AppModule {}
 ```
@@ -99,7 +95,7 @@ export class RootComponent {
 
 Finally import GoldenLayout styles into `styles.css`
 
-```
+```css
 @import "~golden-layout/src/css/goldenlayout-base.css";
 @import "~golden-layout/src/css/goldenlayout-light-theme.css";
 
@@ -118,7 +114,7 @@ After that it should work right away out of the box.
 The original GoldenLayout API may be obtained through the Angular dependency injection mechanism in any of the components rendered with GoldenLayout.
 
 
-```
+```ts
 import * as GoldenLayout from 'golden-layout';
 import { Component, Inject } from '@angular/core';
 import { GoldenLayoutContainer } from '@embedded-enterprises/ng6-golden-layout';
@@ -140,7 +136,8 @@ These objects can then be used to manipulate the GoldenLayout.
 When you use angular routing, angular will manipulate the URLs on the client side and therefore destroy navigation for your application when you're opening a popout. The solution is fairly simple: we disable the angular routing functionality for child windows.
 
 Let's assume your project looks like the following:
-```
+
+```bash
 root
 |->src
 | |-> main.ts
@@ -169,6 +166,7 @@ To proceed, we need the following information:
 1. Open up your index.html, remove the selector of the main component (`<app-main>`)
 2. Open up your main.ts, find the lines where angular is bootstrapped (usually at the end of the file), remove them.
 3. Add the following code, replace the selectors with your selectors.
+
 ```ts
 if (!window.opener) {
   const baseRootElem = document.createElement('app-main');
@@ -182,12 +180,14 @@ if (!window.opener) {
   platformBrowserDynamic().bootstrapModule(AppChildWindowModule);
 }
 ```
+
 4. Open up your app/app.module.ts.
   - Depending on your application, you usually have an AppModule where all your components are added and your `<app-main>` component is set as bootstrap.
   - Create a second module, call it AppChildWindowModule, add your components, import required modules (**without the router module**) and set the `<app-docking>` component as bootstrap.
   - For larger applications, you should organize your code into smaller NgModules which provide better scalability, since you don't need to add all declarations twice
   - At the end you should have something like the following:
-```
+
+```ts
 const COMPONENTS = [
   AppDockingComponent,
   // Your dockable components,
@@ -195,7 +195,6 @@ const COMPONENTS = [
 
 @NgModule({
   declarations: COMPONENTS,
-  entryComponents: COMPONENTS,
   exports: COMPONENTS,
   imports: [CommonModule, GoldenLayoutModule.forRoot(CONFIG), /* Additional modules */],
 })
@@ -253,18 +252,7 @@ To see a full-featured example including routing, have a look [here](https://git
 
 All services used within your app can be chosen to be either scoped to the current window (default) or to be the same instance across all windows (like a singleton).
 
-To use services across multiple windows, you need to initialize the multi-window compatibility layer.
-
-```ts
-// in main.ts
-import { MultiWindowInit } from '@embedded-enterprises/ng6-golden-layout';
-
-// call MultiWindowInit before bootstrapModule().
-MultiWindowInit();
-```
-
 To synchronize a service, use the `@MultiWindowService()` decorator:
-
 ```ts
 @MultiWindowService<YourService>()
 @Injectable()
@@ -295,24 +283,15 @@ class InvalidComponent {
 }
 ```
 
-After that, you inject the previously created component into the GoldenLayout binding like this:
+After that, you pass the Component Type into the GoldenLayout.forRoot function like this:
 
 ```ts
 // In your main NgModule
-import { FallbackComponent } from '@embedded-enterprises/ng6-golden-layout';
 @NgModule({
-  providers: [
-    //...
-    {
-      provide: FallbackComponent,
-      useValue: InvalidComponent, // DON'T USE `useClass` or `useFactory` here!
-    },
+  imports: [
+    GoldenLayoutModule.forRoot(COMPONENTS, InvalidComponent),
   ],
   declarations: [
-    //...
-    InvalidComponent,
-  ],
-  entryComponents: [
     //...
     InvalidComponent,
   ],

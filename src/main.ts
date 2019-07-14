@@ -10,7 +10,6 @@ import * as $ from 'jquery';
 if (environment.production) {
   enableProdMode();
 }
-MultiWindowInit();
 window['$'] = $;
 platformBrowserDynamic().bootstrapModule(AppModule)
   .catch(err => console.log(err));

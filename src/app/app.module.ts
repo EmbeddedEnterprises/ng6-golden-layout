@@ -79,7 +79,8 @@ export class RootComponent {
     setTimeout(() => this.layout$.next(CONFIG2), 10000);
   }
   stateChange() {
-    console.log('this.stateChange', this.layout.getSerializableState());
+    console.log('State changed');
+    //console.log('this.stateChange', this.layout.getSerializableState());
   }
 }
 @Component({
@@ -136,20 +137,20 @@ const COMPONENTS: ComponentType[] = [
   }
 ];
 @NgModule({
-  declarations: [RootComponent, TestComponent, TestedComponent, FailComponent],
-  entryComponents: [TestComponent, FailComponent, TestedComponent],
+  declarations: [
+    RootComponent,
+    TestComponent,
+    TestedComponent,
+    FailComponent
+  ],
   imports: [
     BrowserModule,
     BrowserAnimationsModule,
-    GoldenLayoutModule.forRoot(COMPONENTS),
+    GoldenLayoutModule.forRoot(COMPONENTS, FailComponent),
   ],
   providers: [
     TestService,
     FooService,
-    {
-      provide: FallbackComponent,
-      useValue: FailComponent,
-    },
   ],
   bootstrap: [RootComponent]
 })
