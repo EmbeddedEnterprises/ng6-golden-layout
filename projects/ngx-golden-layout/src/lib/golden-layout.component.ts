@@ -25,6 +25,7 @@ import { FallbackComponent, FailedComponent } from './fallback';
 import { RootWindowService } from './root-window.service';
 import { Observable, Subscription } from 'rxjs';
 import { implementsGlOnResize, implementsGlOnShow, implementsGlOnHide, implementsGlOnTab, implementsGlOnClose } from './type-guards';
+import { PluginRegistryService } from './plugin-registry.service';
 
 export const GoldenLayoutContainer = new InjectionToken('GoldenLayoutContainer');
 export const GoldenLayoutComponentState = new InjectionToken('GoldenLayoutComponentState');
@@ -86,6 +87,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     private viewContainer: ViewContainerRef,
     private appref: ApplicationRef,
     private componentFactoryResolver: ComponentFactoryResolver,
+    private pluginRegistry: PluginRegistryService,
     private ngZone: NgZone,
     private readonly injector: Injector,
     @Optional() @Inject(FallbackComponent) private readonly fallbackComponent: any

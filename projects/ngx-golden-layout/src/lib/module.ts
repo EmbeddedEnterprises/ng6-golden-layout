@@ -2,10 +2,11 @@ import { NgModule, ModuleWithProviders, APP_INITIALIZER, ANALYZE_FOR_ENTRY_COMPO
 import { CommonModule } from '@angular/common';
 import { GoldenLayoutComponent } from './golden-layout.component';
 import { RootWindowService } from './root-window.service';
-import { ComponentType, DefaultComponents } from './config';
+import * as config from './config';
 import { ComponentRegistryService } from './component-registry.service';
 import { MultiWindowInit } from './multiwindow-service';
 import { FallbackComponent } from './fallback';
+import { PluginRegistryService } from './plugin-registry.service';
 
 @NgModule({
   declarations: [GoldenLayoutComponent],
@@ -13,17 +14,29 @@ import { FallbackComponent } from './fallback';
   imports: [CommonModule]
 })
 export class GoldenLayoutModule {
-  public static forRoot(types?: ComponentType[], fallback?: Type<any>): ModuleWithProviders {
+  public static forRoot(types?: config.ComponentType[], fallback?: Type<any>, pluginDeps?: config.PluginDependencyType[]): ModuleWithProviders {
     return {
       ngModule: GoldenLayoutModule,
       providers: [
         ComponentRegistryService,
         RootWindowService,
-        { provide: DefaultComponents, useValue: types },
+        PluginRegistryService,
         { provide: APP_INITIALIZER, useValue: MultiWindowInit, multi: true },
+        { provide: config.GoldenLayoutComponents, useValue: types, },
         { provide: ANALYZE_FOR_ENTRY_COMPONENTS, useValue: [types, fallback], multi: true },
+        { provide: config.GoldenLayoutPluginDependency, useValue: pluginDeps },
         { provide: FallbackComponent, useValue: fallback },
-      ]
+      ],
+    };
+  }
+
+  public static forChild(types?: config.ComponentType[]): ModuleWithProviders {
+    return {
+      ngModule: GoldenLayoutModule,
+      providers: [
+        { provide: config.GoldenLayoutComponents, useValue: types, multi: true },
+        { provide: ANALYZE_FOR_ENTRY_COMPONENTS, useValue: types, multi: true },
+      ],
     };
   }
 }

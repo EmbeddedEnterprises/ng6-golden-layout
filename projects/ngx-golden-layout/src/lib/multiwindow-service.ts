@@ -1,4 +1,5 @@
 export function MultiWindowInit(): void {
+  console.log('MultiWindowInit');
   if (!window.opener) {
     (window as any).__services = new (window as any).Map();
     (window as any).__serviceConstructors = new (window as any).Map();
@@ -31,10 +32,10 @@ export function MultiWindowService<T>() {
       }
       return rootWindow.__services.get(constr.name);
     }) as any;
-    if (window === rootWindow) {
-      const metadata = (Reflect as any).getMetadata('design:paramtypes', constr);
-      (Reflect as any).metadata('design:paramtypes', metadata)(newConstructor);
-    }
+    ///if (window === rootWindow) {
+    ///  const metadata = (Reflect as any).getMetadata('design:paramtypes', constr);
+    ///  (Reflect as any).metadata('design:paramtypes', metadata)(newConstructor);
+    ///}
     return newConstructor as Constructor<T>;
   };
 }

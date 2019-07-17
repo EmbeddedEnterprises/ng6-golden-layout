@@ -1,11 +1,11 @@
 import { Inject, Injectable, Optional, Type } from '@angular/core';
-import { ComponentType, DefaultComponents } from './config';
+import { ComponentType, GoldenLayoutComponents } from './config';
 
 @Injectable()
 export class ComponentRegistryService {
   private components = new Map<string, Type<any>>();
 
-  constructor(@Inject(DefaultComponents) @Optional() initialComponents: ComponentType[]) {
+  constructor(@Inject(GoldenLayoutComponents) @Optional() initialComponents: ComponentType[]) {
     (initialComponents || []).forEach(c => this.registerComponent(c));
   }
 

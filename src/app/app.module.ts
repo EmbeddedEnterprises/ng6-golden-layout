@@ -6,12 +6,13 @@ import {
   GoldenLayoutModule,
   MultiWindowService,
   GlOnClose,
-  FallbackComponent,
   FailedComponent,
   ComponentType,
   GoldenLayoutComponent,
+  PluginRegistryService,
 } from 'ngx-golden-layout';
 import { BehaviorSubject } from 'rxjs';
+import { PluginDependencyType } from 'projects/ngx-golden-layout/src/lib/config';
 
 const CONFIG: GoldenLayout.Config = {
   content: [{
@@ -74,9 +75,18 @@ export class TestService {
 export class RootComponent {
   public layout$ = new BehaviorSubject(CONFIG);
   @ViewChild(GoldenLayoutComponent, { static: true }) layout: GoldenLayoutComponent;
-
-  constructor() {
-    setTimeout(() => this.layout$.next(CONFIG2), 10000);
+  constructor(private pluginRegistry: PluginRegistryService) {
+  }
+  ngAfterViewInit() {
+    setTimeout(() => {
+      this.pluginRegistry.loadPlugin('panel-library', 'http://localhost:8000/panel-library.umd.min.js').then(() => {
+        this.layout.createNewComponent({
+          componentName: 'plugin-lib',
+          type: 'component',
+          title: 'Plugin - Dynamically loaded',
+        });
+      });
+    }, 3000);
   }
   stateChange() {
     console.log('State changed');
@@ -126,6 +136,17 @@ export class FailComponent {
   constructor(@Inject(FailedComponent) public componentName: string) { }
 }
 
+const DEPS: PluginDependencyType[] = [{
+  name: '@angular/core',
+  loader: import('@angular/core'),
+}, {
+  name: '@angular/common',
+  loader: import('@angular/common'),
+}, {
+  name: 'ngx-golden-layout',
+  loader: import('ngx-golden-layout'),
+}];
+
 const COMPONENTS: ComponentType[] = [
   {
     name: 'app-test',
@@ -146,7 +167,7 @@ const COMPONENTS: ComponentType[] = [
   imports: [
     BrowserModule,
     BrowserAnimationsModule,
-    GoldenLayoutModule.forRoot(COMPONENTS, FailComponent),
+    GoldenLayoutModule.forRoot(COMPONENTS, FailComponent, DEPS),
   ],
   providers: [
     TestService,
