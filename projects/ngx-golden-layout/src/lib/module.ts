@@ -6,7 +6,7 @@ import * as config from './config';
 import { ComponentRegistryService } from './component-registry.service';
 import { MultiWindowInit } from './multiwindow-service';
 import { FallbackComponent } from './fallback';
-import { PluginRegistryService } from './plugin-registry.service';
+import { PluginRegistryService, PluginURLProvider } from './plugin-registry.service';
 
 @NgModule({
   declarations: [GoldenLayoutComponent],
@@ -21,6 +21,7 @@ export class GoldenLayoutModule {
         ComponentRegistryService,
         RootWindowService,
         PluginRegistryService,
+        PluginURLProvider,
         { provide: APP_INITIALIZER, useValue: MultiWindowInit, multi: true },
         { provide: config.GoldenLayoutComponents, useValue: types, },
         { provide: ANALYZE_FOR_ENTRY_COMPONENTS, useValue: [types, fallback], multi: true },

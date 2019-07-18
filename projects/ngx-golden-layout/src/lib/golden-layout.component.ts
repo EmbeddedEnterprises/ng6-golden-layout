@@ -102,7 +102,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     if (this.isChildWindow) {
       window.document.title = window.document.URL;
       (console as any).__log = console.log;
-      console.log = this.topWindow.console.log;
+      console.log = (...args: any[]) => this.topWindow.console.log('[CHILD] =>', ...args);
     }
     if (isDevMode()) console.log(`Create@${this.isChildWindow ? 'child' : 'root'}!`);
   }

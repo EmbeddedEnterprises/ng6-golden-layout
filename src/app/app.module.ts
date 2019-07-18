@@ -10,9 +10,10 @@ import {
   ComponentType,
   GoldenLayoutComponent,
   PluginRegistryService,
+  RootWindowService,
+  PluginDependencyType,
 } from 'ngx-golden-layout';
 import { BehaviorSubject } from 'rxjs';
-import { PluginDependencyType } from 'projects/ngx-golden-layout/src/lib/config';
 
 const CONFIG: GoldenLayout.Config = {
   content: [{
@@ -75,17 +76,25 @@ export class TestService {
 export class RootComponent {
   public layout$ = new BehaviorSubject(CONFIG);
   @ViewChild(GoldenLayoutComponent, { static: true }) layout: GoldenLayoutComponent;
-  constructor(private pluginRegistry: PluginRegistryService) {
+  constructor(
+    private pluginRegistry: PluginRegistryService,
+    private root: RootWindowService,
+  ) {
   }
   ngAfterViewInit() {
-    setTimeout(() => {
-      this.pluginRegistry.loadPlugin('panel-library', 'http://localhost:8000/panel-library.umd.min.js').then(() => {
-        this.layout.createNewComponent({
-          componentName: 'plugin-lib',
-          type: 'component',
-          title: 'Plugin - Dynamically loaded',
-        });
+    if (this.root.isChildWindow()) {
+      return;
+    }
+
+    this.pluginRegistry.waitForPlugin('panel-library').then(() => {
+      this.layout.createNewComponent({
+        componentName: 'plugin-lib',
+        type: 'component',
+        title: 'Plugin - Dynamically loaded',
       });
+    });
+    setTimeout(() => {
+      this.pluginRegistry.startLoadPlugin('panel-library', 'http://localhost:8000/panel-library.umd.min.js')
     }, 3000);
   }
   stateChange() {
