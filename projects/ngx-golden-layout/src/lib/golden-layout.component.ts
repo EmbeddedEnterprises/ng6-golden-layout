@@ -25,7 +25,7 @@ import { FallbackComponent, FailedComponent } from './fallback';
 import { RootWindowService } from './root-window.service';
 import { Observable, Subscription } from 'rxjs';
 import { implementsGlOnResize, implementsGlOnShow, implementsGlOnHide, implementsGlOnTab, implementsGlOnClose } from './type-guards';
-import { PluginRegistryService } from './plugin-registry.service';
+import { Deferred } from './deferred';
 
 export const GoldenLayoutContainer = new InjectionToken('GoldenLayoutContainer');
 export const GoldenLayoutComponentState = new InjectionToken('GoldenLayoutComponentState');
@@ -33,18 +33,6 @@ export const GoldenLayoutEventHub = new InjectionToken('GoldenLayoutEventHub');
 
 interface ComponentInitCallback extends Function {
   (container: GoldenLayout.Container, componentState: any): void;
-}
-
-class Deferred<T> {
-  public promise: Promise<T>
-  public resolve: (val?: T) => void;
-  public reject: (err: any) => void;
-  constructor() {
-    this.promise = new Promise((resolve, reject) => {
-      this.resolve = resolve;
-      this.reject = reject;
-    });
-  }
 }
 
 @Component({
@@ -87,7 +75,6 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     private viewContainer: ViewContainerRef,
     private appref: ApplicationRef,
     private componentFactoryResolver: ComponentFactoryResolver,
-    private pluginRegistry: PluginRegistryService,
     private ngZone: NgZone,
     private readonly injector: Injector,
     @Optional() @Inject(FallbackComponent) private readonly fallbackComponent: any
@@ -225,15 +212,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
       if (isDevMode()) {
         console.log(`Resolving component ${type}`);
       }
-      const actualComponent = this.componentRegistry.componentMap().get(type);
-      let component = this.fallbackType;
-      if (actualComponent) {
-        component = this.buildConstructor(actualComponent);
-      }
-      if (!component) {
-        throw new Error(`Unknown component "${type}"`);
-      }
-      return component;
+      return this.buildConstructor(type);
     };
 
     // Initialize the layout.
@@ -245,37 +224,44 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
    * Build a 'virtual' constructor which is used to pass the components to goldenLayout
    * @param componentType
    */
-  private buildConstructor(componentType: Type<any>): ComponentInitCallback {
+  private buildConstructor(componentName: string): ComponentInitCallback {
     // Can't use an ES6 lambda here, since it is not a constructor
     const self = this;
     return function (container: GoldenLayout.Container, componentState: any) {
       self.ngZone.run(() => {
-        // Create an instance of the angular component.
-        const factory = self.componentFactoryResolver.resolveComponentFactory(componentType);
-        let failedComponent: string = null;
-        if (componentType === self.fallbackComponent) {
-          // Failed to find the component constructor **AND** we have a fallback component defined,
-          // so lookup the failed component's name and inject it into the fallback component.
-          failedComponent = (container as any)._config.componentName;
-        }
-        const injector = self._createComponentInjector(container, componentState, failedComponent);
-        const componentRef = self.viewContainer.createComponent(factory, undefined, injector);
-
-        // Bind the new component to container's client DOM element.
-        container.getElement().append($(componentRef.location.nativeElement));
-        self._bindEventHooks(container, componentRef.instance);
-        let destroyed = false;
-        const destroyFn = () => {
-          if (!destroyed) {
-            destroyed = true;
-            $(componentRef.location.nativeElement).remove();
-            componentRef.destroy();
+        // Wait until the component registry can provide a type for the component
+        // TBD: Maybe add a timeout here?
+        const componentPromise = self.componentRegistry.waitForComponent(componentName);
+        componentPromise.then((componentType) => {
+          // We got our component type
+          console.log(`Component ${componentName} returned from componentRegistry`);
+          // Create an instance of the angular component.
+          const factory = self.componentFactoryResolver.resolveComponentFactory(componentType);
+          let failedComponent: string = null;
+          if (componentType === self.fallbackComponent) {
+            // Failed to find the component constructor **AND** we have a fallback component defined,
+            // so lookup the failed component's name and inject it into the fallback component.
+            failedComponent = (container as any)._config.componentName;
           }
-        };
+          const injector = self._createComponentInjector(container, componentState, failedComponent);
+          const componentRef = self.viewContainer.createComponent(factory, undefined, injector);
 
-        // Listen to containerDestroy and window beforeunload, preventing a double-destroy
-        container.on('destroy', destroyFn);
-        self.onUnloaded.promise.then(destroyFn);
+          // Bind the new component to container's client DOM element.
+          container.getElement().append($(componentRef.location.nativeElement));
+          self._bindEventHooks(container, componentRef.instance);
+          let destroyed = false;
+          const destroyFn = () => {
+            if (!destroyed) {
+              destroyed = true;
+              $(componentRef.location.nativeElement).remove();
+              componentRef.destroy();
+            }
+          };
+
+          // Listen to containerDestroy and window beforeunload, preventing a double-destroy
+          container.on('destroy', destroyFn);
+          self.onUnloaded.promise.then(destroyFn);
+        });
       });
     };
   }

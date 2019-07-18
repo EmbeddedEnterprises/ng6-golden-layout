@@ -1,4 +1,4 @@
-import { NgModule, ModuleWithProviders, APP_INITIALIZER, ANALYZE_FOR_ENTRY_COMPONENTS, Type } from '@angular/core';
+import { NgModule, ModuleWithProviders, APP_INITIALIZER, ANALYZE_FOR_ENTRY_COMPONENTS, Type, Provider } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { GoldenLayoutComponent } from './golden-layout.component';
 import { RootWindowService } from './root-window.service';
@@ -14,7 +14,7 @@ import { PluginRegistryService, PluginURLProvider } from './plugin-registry.serv
   imports: [CommonModule]
 })
 export class GoldenLayoutModule {
-  public static forRoot(types?: config.ComponentType[], fallback?: Type<any>, pluginDeps?: config.PluginDependencyType[]): ModuleWithProviders {
+  public static forRoot(types: config.ComponentType[], fallback?: Type<any>, pluginDeps?: config.PluginDependencyType[]): ModuleWithProviders {
     return {
       ngModule: GoldenLayoutModule,
       providers: [
@@ -30,14 +30,11 @@ export class GoldenLayoutModule {
       ],
     };
   }
+}
 
-  public static forChild(types?: config.ComponentType[]): ModuleWithProviders {
-    return {
-      ngModule: GoldenLayoutModule,
-      providers: [
-        { provide: config.GoldenLayoutComponents, useValue: types, multi: true },
-        { provide: ANALYZE_FOR_ENTRY_COMPONENTS, useValue: types, multi: true },
-      ],
-    };
-  }
+export function forChild(types: config.ComponentType[]): Provider[] {
+  return [
+    { provide: config.GoldenLayoutComponents, useValue: types },
+    { provide: ANALYZE_FOR_ENTRY_COMPONENTS, useValue: types, multi: true },
+  ];
 }

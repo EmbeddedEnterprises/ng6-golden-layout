@@ -1,4 +1,4 @@
-import { Injectable, Inject, Optional, NgModuleFactory, Injector, NgModuleRef, getModuleFactory, ɵNgModuleFactory } from '@angular/core';
+import { Injectable, Inject, Optional, Injector, NgModuleRef, ɵNgModuleFactory } from '@angular/core';
 import { GoldenLayoutPluginDependency, PluginDependencyType } from './config';
 import { Deferred } from './deferred';
 import { Subject, Observable } from 'rxjs';
@@ -72,7 +72,7 @@ export class PluginRegistryService {
   private availableDependencies = new Map<string, Promise<any>>();
   private loadedPlugins = new Map<string, IPluginState>();
 
-  public pluginLoaded$ = new Subject<NgModuleRef<any>>();
+  public pluginLoaded$ = new Subject<{ id: string, module: NgModuleRef<any> }>();
   public pluginUnloaded$ = new Subject<string>();
 
   constructor(
@@ -147,7 +147,7 @@ export class PluginRegistryService {
         const moduleFactory = new ɵNgModuleFactory(moduleKlass);
         x.moduleRef = moduleFactory.create(this.injector);
         x.module.resolve(exports as any);
-        this.pluginLoaded$.next(x.moduleRef);
+        this.pluginLoaded$.next({ id: x.id, module: x.moduleRef });
       }).catch(err => {
         console.warn('Failed to load plugin', moduleId, 'error', err);
         x.module.reject(err);
