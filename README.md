@@ -10,7 +10,7 @@ This project aims to provide a complete solution for embedding golden-layout wit
 - To prevent confusion, the package also got renamed:
   - For Angular 6/7 use `@embedded-enterprises/ng6-golden-layout@0.0.12`
   - For Angular 8 and a drop-in compatible API (easier upgrade) use `ngx-golden-layout@0.0.12`
-  - To use the new API, use `ngx-golden-layout@0.0.13`
+  - To use the new API, use `ngx-golden-layout@0.0.15`
 
 Thanks to the awesome people at https://www.browserstack.com which make testing for IE/Edge possible!
 
