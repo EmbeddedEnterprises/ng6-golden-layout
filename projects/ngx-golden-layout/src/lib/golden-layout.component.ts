@@ -30,6 +30,7 @@ import { Deferred } from './deferred';
 export const GoldenLayoutContainer = new InjectionToken('GoldenLayoutContainer');
 export const GoldenLayoutComponentState = new InjectionToken('GoldenLayoutComponentState');
 export const GoldenLayoutEventHub = new InjectionToken('GoldenLayoutEventHub');
+export const GoldenLayoutComponentHost = new InjectionToken('GoldenLayoutComponentHost');
 
 interface ComponentInitCallback extends Function {
   (container: GoldenLayout.Container, componentState: any): void;
@@ -292,6 +293,10 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
         provide: GoldenLayoutEventHub,
         useValue: this.goldenLayout.eventHub,
       },
+      {
+        provide: GoldenLayoutComponentHost,
+        useValue: this,
+      }
     ];
     if (!!failed) {
       providers.push({
