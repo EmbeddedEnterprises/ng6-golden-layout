@@ -45,6 +45,11 @@ const CONFIG2: GoldenLayout.Config = {
         type: 'component',
         componentName: 'app-test',
         title: 'Test 2',
+      },
+      {
+        type: 'component',
+        componentName: 'app-tested',
+        title: 'Test 3',
       }
     ]
   }]
@@ -74,7 +79,7 @@ export class TestService {
   selector: `app-root`,
 })
 export class RootComponent {
-  public layout$ = new BehaviorSubject(CONFIG);
+  public layout$ = new BehaviorSubject(CONFIG2);
   @ViewChild(GoldenLayoutComponent, { static: true }) layout: GoldenLayoutComponent;
   constructor(
     private pluginRegistry: PluginRegistryService,

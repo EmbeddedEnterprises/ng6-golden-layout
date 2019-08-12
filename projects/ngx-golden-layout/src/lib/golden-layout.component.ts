@@ -338,24 +338,6 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     }
 
     if (implementsGlOnClose(component)) {
-      let hookEstablished = false;
-      container.on('tab', (tab) => {
-        /* GoldenLayout SHOULD send a tabEvent when the component is placed within a tab control, giving
-           us access to the tab object, which allows us to patch the close handler to actually call the
-           right close option.
-        */
-        if (hookEstablished) {
-          return;
-        }
-        hookEstablished = true;
-        tab.closeElement.off('click');
-        tab._onCloseClick = (ev) => {
-          ev.stopPropagation();
-          tab.contentItem.container.close();
-        };
-        tab._onCloseClickFn = tab._onCloseClick.bind(tab);
-        tab.closeElement.click(tab._onCloseClickFn);
-      });
 
       const containerClose = container.close.bind(container);
       container.close = () => {
@@ -367,6 +349,15 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
           containerClose();
         }, () => { /* Prevent close, don't care about rejections */ });
       };
+
+      const tab = container.tab as any;
+      tab.closeElement.off('click');
+      tab._onCloseClick = (ev) => {
+        ev.stopPropagation();
+        container.close();
+      };
+      tab._onCloseClickFn = tab._onCloseClick.bind(tab);
+      tab.closeElement.click(tab._onCloseClickFn);
     }
   }
 }
