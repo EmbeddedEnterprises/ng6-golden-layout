@@ -12,6 +12,13 @@ import {
   PluginRegistryService,
   RootWindowService,
   PluginDependencyType,
+  GlOnPopout,
+  GlOnShow,
+  GlOnTab,
+  GlOnHide,
+  GlOnPopin,
+  GlOnResize,
+  GlOnUnload,
 } from 'ngx-golden-layout';
 import { BehaviorSubject } from 'rxjs';
 
@@ -111,8 +118,39 @@ export class RootComponent {
   template: `<h1>Test</h1><span>{{test.id}}</span>`,
   selector: `app-test`,
 })
-export class TestComponent {
+export class TestComponent implements GlOnPopout, GlOnClose, GlOnHide, GlOnShow, GlOnPopin, GlOnResize, GlOnTab, GlOnUnload {
+  glOnHide(): void {
+    console.log('glOnHide');
+  }
   constructor(public test: TestService) { }
+
+  glOnPopout() {
+    console.log('glOnPopout');
+  }
+  async glOnClose() {
+    console.log('glOnClose')
+  }
+  glOnShow() {
+    console.log('glOnShow');
+  }
+  glOnResize() {
+    console.log('glOnResize');
+  }
+  glOnTab() {
+    console.log('glOnTab');
+  }
+  glOnPopin() {
+    console.log('glOnPopin');
+  }
+  glOnUnload() {
+    console.log('glOnUnload');
+  }
+  ngOnInit() {
+    console.log('Initialized');
+  }
+  ngOnDestroy() {
+    console.log('Destroyed');
+  }
 }
 
 @Component({

@@ -1,4 +1,4 @@
-import { GlOnResize, GlOnShow, GlOnHide, GlOnTab, GlOnClose } from "./hooks";
+import { GlOnResize, GlOnShow, GlOnHide, GlOnTab, GlOnClose, GlOnPopin, GlOnUnload, GlOnPopout } from "./hooks";
 
 /**
  * Type guard which determines if a component implements the GlOnResize interface.
@@ -33,4 +33,14 @@ export function implementsGlOnTab(obj: any): obj is GlOnTab {
  */
 export function implementsGlOnClose(obj: any): obj is GlOnClose {
   return typeof obj === 'object' && typeof obj.glOnClose === 'function';
+}
+
+export function implementsGlOnPopin(obj: any): obj is GlOnPopin {
+  return typeof obj === 'object' && typeof obj.glOnPopin === 'function';
+}
+export function implementsGlOnUnload(obj: any): obj is GlOnUnload {
+  return typeof obj === 'object' && typeof obj.glOnUnload === 'function';
+}
+export function implementsGlOnPopout(obj: any): obj is GlOnPopout {
+  return typeof obj === 'object' && typeof obj.glOnPopout === 'function';
 }

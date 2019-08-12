@@ -8,7 +8,6 @@ import {
   OnInit,
   OnDestroy,
   ApplicationRef,
-  Type,
   Optional,
   Inject,
   NgZone,
@@ -24,7 +23,16 @@ import { ComponentRegistryService } from './component-registry.service';
 import { FallbackComponent, FailedComponent } from './fallback';
 import { RootWindowService } from './root-window.service';
 import { Observable, Subscription } from 'rxjs';
-import { implementsGlOnResize, implementsGlOnShow, implementsGlOnHide, implementsGlOnTab, implementsGlOnClose } from './type-guards';
+import {
+  implementsGlOnResize,
+  implementsGlOnShow,
+  implementsGlOnHide,
+  implementsGlOnTab,
+  implementsGlOnClose,
+  implementsGlOnPopin,
+  implementsGlOnUnload,
+  implementsGlOnPopout
+} from './type-guards';
 import { Deferred } from './deferred';
 
 export const GoldenLayoutContainer = new InjectionToken('GoldenLayoutContainer');
@@ -62,6 +70,8 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
 
   private fallbackType: ComponentInitCallback = null;
   private layoutSubscription: Subscription;
+  private openedComponents = [];
+  private poppedIn = false;
 
   @HostListener('window:resize')
   public onResize(): void {
@@ -126,25 +136,29 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
 
   // Map beforeunload to onDestroy to simplify the handling
   @HostListener('window:beforeunload', ['$event'])
-  public ngOnDestroy(ev?: Event): void {
+  public onUnload(ev: Event) {
+    if (!this.poppedIn) {
+      this.openedComponents.forEach(c => {
+        if (implementsGlOnUnload(c)) {
+          c.glOnUnload();
+        }
+      });
+    }
+    this.onUnloaded.promise.then(() => this.ngOnDestroy());
+    this.onUnloaded.resolve();
+  }
+
+  public ngOnDestroy(): void {
     if (isDevMode()) {
       console.log(`Destroy@${this.isChildWindow ? 'child' : 'root'}!`);
     }
-
-    // TBD: If we're the root window, destroy the golden layout instance if we have one
     this.layoutSubscription.unsubscribe();
-    if (ev) {
-      // The event is defined -> window unload, destroy all components recursively
-      // Use a promise to defer component destruction in case the child window is closed.
-      this.onUnloaded.resolve();
-    }
 
     if (this.isChildWindow) {
       const index = (this.topWindow as any).__apprefs.indexOf(this.appref);
       if (index >= 0) {
         (this.topWindow as any).__apprefs.splice(index, 1);
       }
-      console.log = (console as any).__log;
     }
 
     // restore the original tick method.
@@ -153,6 +167,10 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     // or within the root window, where we HAVE to restore the original tick method
     this.appref.tick = (this.appref as any).__tick;
     this.destroyGoldenLayout();
+
+    if (this.isChildWindow) {
+      console.log = (console as any).__log;
+    }
   }
 
   public getSerializableState(): any {
@@ -188,7 +206,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
       return null;
     }
     for (const x of contentItems) {
-      if (x.type === 'stack') {
+      if (x.isStack) {
         return x;
       }
       const s = this.findStack(x.contentItems);
@@ -202,13 +220,39 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     if (!this.goldenLayout) {
       return;
     }
-    (<GoldenLayout.EventEmitter>(<any>this.goldenLayout)).off('stateChanged', this.pushStateChange);
+    this.goldenLayout.off('stateChanged', this.pushStateChange);
     this.goldenLayout.destroy();
     this.goldenLayout = null;
   }
 
   private initializeGoldenLayout(layout: any): void {
     this.goldenLayout = new GoldenLayout(layout, $(this.el.nativeElement));
+    const origPopout = this.goldenLayout.createPopout.bind(this.goldenLayout);
+    this.goldenLayout.createPopout = (item: GoldenLayout.ContentItem, dim, parent, index) => {
+      const rec = [item];
+      while(rec.length) {
+        const itemToProcess = rec.shift();
+        rec.push(...itemToProcess.contentItems);
+        if (itemToProcess.isComponent) {
+          const component = (itemToProcess as any).container.__ngComponent;
+          if (component && implementsGlOnPopout(component)) {
+            component.glOnPopout();
+          }
+        }
+        console.log(itemToProcess);
+      }
+      console.log('beforepopout', item);
+      return origPopout(item, dim, parent, index);
+    }
+    this.goldenLayout.on('popIn', () => {
+      console.log('popIn');
+      this.poppedIn = true;
+      this.openedComponents.forEach(c => {
+        if (implementsGlOnPopin(c)) {
+          c.glOnPopin();
+        }
+      });
+    });
 
     // Overwrite the 'getComponent' method to dynamically resolve JS components.
     this.goldenLayout.getComponent = (type) => {
@@ -220,7 +264,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
 
     // Initialize the layout.
     this.goldenLayout.init();
-    (<GoldenLayout.EventEmitter>(<any>this.goldenLayout)).on('stateChanged', this.pushStateChange);
+    this.goldenLayout.on('stateChanged', this.pushStateChange);
   }
 
   /**
@@ -252,10 +296,13 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
           // Bind the new component to container's client DOM element.
           container.getElement().append($(componentRef.location.nativeElement));
           self._bindEventHooks(container, componentRef.instance);
+          (container as any).__ngComponent = componentRef.instance;
+          self.openedComponents.push(componentRef.instance);
           let destroyed = false;
           const destroyFn = () => {
             if (!destroyed) {
               destroyed = true;
+              self.openedComponents = self.openedComponents.filter(i => i !== componentRef.instance);
               $(componentRef.location.nativeElement).remove();
               componentRef.destroy();
             }
@@ -340,10 +387,8 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     }
 
     if (implementsGlOnClose(component)) {
-
       const containerClose = container.close.bind(container);
       container.close = () => {
-        console.log("Container close:", container);
         if (!(container as any)._config.isClosable) {
           return false;
         }
@@ -352,14 +397,18 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
         }, () => { /* Prevent close, don't care about rejections */ });
       };
 
+      // if the container is contained in a tab control, we intercept its close click.
+      // TBD: Check whether we need to apply this.
       const tab = container.tab as any;
-      tab.closeElement.off('click');
-      tab._onCloseClick = (ev) => {
-        ev.stopPropagation();
-        container.close();
-      };
-      tab._onCloseClickFn = tab._onCloseClick.bind(tab);
-      tab.closeElement.click(tab._onCloseClickFn);
+      if (tab) {
+        tab.closeElement.off('click');
+        tab._onCloseClick = (ev) => {
+          ev.stopPropagation();
+          container.close();
+        };
+        tab._onCloseClickFn = tab._onCloseClick.bind(tab);
+        tab.closeElement.click(tab._onCloseClickFn);
+      }
     }
   }
 }

@@ -45,8 +45,39 @@ export interface GlOnTab {
  */
 export interface GlOnClose {
   /**
-   * Invoked when the tab will be closed, may cancel the close operation asynchronously.
+   * Invoked when the tab will be closed by the close button or stack close button.
    * Resolve the promise to actually close the component, reject to prevent the close operation.
    */
    glOnClose(): Promise<void>;
 }
+
+/**
+ * Hook invoked when a component will be popped in
+ */
+export interface GlOnPopin {
+  /**
+   * Invoked when the component will be popped in.
+   */
+   glOnPopin(): void;
+}
+
+/**
+ * Hook invoked when a component will be popped out
+ */
+export interface GlOnPopout {
+  /**
+   * Invoked when the tab will be popped out.
+   */
+   glOnPopout(): void;
+}
+
+/**
+ * Hook invoked when the page is about to being unloaded (either popout window or root window)
+ */
+export interface GlOnUnload {
+  /**
+   * Invoked when the window is unloaded.
+   */
+   glOnUnload(): void;
+}
+
