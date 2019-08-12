@@ -141,7 +141,9 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
 
     if (this.isChildWindow) {
       const index = (this.topWindow as any).__apprefs.indexOf(this.appref);
-      (this.topWindow as any).__apprefs.splice(index, 1);
+      if (index >= 0) {
+        (this.topWindow as any).__apprefs.splice(index, 1);
+      }
       console.log = (console as any).__log;
     }
 
