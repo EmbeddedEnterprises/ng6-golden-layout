@@ -43,6 +43,9 @@ export const GoldenLayoutComponentHost = new InjectionToken('GoldenLayoutCompone
 interface ComponentInitCallback extends Function {
   (container: GoldenLayout.Container, componentState: any): void;
 }
+
+// We need to wrap some golden layout internals, so we can intercept close and 'close stack'
+// For close, the tab is wrapped and the close element to change the event handler to close the correct container.
 const lm = GoldenLayout as any;
 const originalTab = lm.__lm.controls.Tab;
 const newTab = function(header, contentItem) {
@@ -59,7 +62,8 @@ newTab._template = '<li class="lm_tab"><i class="lm_left"></i>' +
 '<i class="lm_right"></i></li>';
 lm.__lm.controls.Tab = newTab;
 
-
+// Stack close is implemented using a wrapped header which iterates through the content items
+// and calls the correct close method.
 const originalHeader = lm.__lm.controls.Header;
 const newHeader = function(layoutManager, parent) {
   const header = new originalHeader(layoutManager, parent);
@@ -176,7 +180,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
 
   // Map beforeunload to onDestroy to simplify the handling
   @HostListener('window:beforeunload', ['$event'])
-  public onUnload(ev: Event) {
+  public onUnload() {
     if (!this.poppedIn) {
       this.openedComponents.forEach(c => {
         if (implementsGlOnUnload(c)) {
