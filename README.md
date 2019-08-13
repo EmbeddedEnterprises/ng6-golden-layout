@@ -10,7 +10,7 @@ This project aims to provide a complete solution for embedding golden-layout wit
 - To prevent confusion, the package also got renamed:
   - For Angular 6/7 use `@embedded-enterprises/ng6-golden-layout@0.0.12`
   - For Angular 8 and a drop-in compatible API (easier upgrade) use `ngx-golden-layout@0.0.12`
-  - To use the new API, use `ngx-golden-layout@0.0.15`
+  - To use the new API, use `ngx-golden-layout@0.0.17`
 
 Thanks to the awesome people at https://www.browserstack.com which make testing for IE/Edge possible!
 
@@ -130,6 +130,10 @@ export class TestComponent {
 ```
 
 These objects can then be used to manipulate the GoldenLayout.
+
+### Component Lifecycle
+
+To get a deeper understanding on how to hook into golden layout and angulars behavior, refer to [LIFECYCLE.md](LIFECYCLE.md)
 
 ### Usage with angular routing
 
@@ -309,7 +313,7 @@ This binding is stable but by far not feature complete.
 
 - ~~Automatic service Injection~~
 - ~~Make Configuration more robust (it currently fails if it can't find a pane)~~
-- Provide possibility to spawn and register new Panes on the fly
+- ~~Provide possibility to spawn and register new Panes on the fly~~
 - Improve redocking algorithm
 
 ## Hacking
