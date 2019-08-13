@@ -43,6 +43,47 @@ export const GoldenLayoutComponentHost = new InjectionToken('GoldenLayoutCompone
 interface ComponentInitCallback extends Function {
   (container: GoldenLayout.Container, componentState: any): void;
 }
+const lm = GoldenLayout as any;
+const originalTab = lm.__lm.controls.Tab;
+const newTab = function(header, contentItem) {
+  const tab = new originalTab(header, contentItem);
+  tab.closeElement.off('click touchstart');
+  tab.closeElement.on('click touchstart', (ev) => {
+    ev.stopPropagation();
+    tab.contentItem.container.close();
+  });
+  return tab;
+};
+newTab._template = '<li class="lm_tab"><i class="lm_left"></i>' +
+'<span class="lm_title"></span><div class="lm_close_tab"></div>' +
+'<i class="lm_right"></i></li>';
+lm.__lm.controls.Tab = newTab;
+
+
+const originalHeader = lm.__lm.controls.Header;
+const newHeader = function(layoutManager, parent) {
+  const header = new originalHeader(layoutManager, parent);
+  if (header.closeButton) {
+    header.closeButton._$destroy();
+    const label = header._getHeaderSetting('close');
+    header.closeButton = new lm.__lm.controls.HeaderButton(header, label, 'lm_close', () => {
+      console.log('close stack');
+      header.parent.contentItems.forEach(ci => {
+        ci.container.close();
+      });
+    });
+  }
+  return header;
+};
+newHeader._template = [
+	'<div class="lm_header">',
+	'<ul class="lm_tabs"></ul>',
+	'<ul class="lm_controls"></ul>',
+	'<ul class="lm_tabdropdown_list"></ul>',
+	'</div>'
+].join( '' );
+lm.__lm.controls.Header = newHeader;
+
 
 @Component({
   selector: 'golden-layout-root',
@@ -396,19 +437,6 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
           containerClose();
         }, () => { /* Prevent close, don't care about rejections */ });
       };
-
-      // if the container is contained in a tab control, we intercept its close click.
-      // TBD: Check whether we need to apply this.
-      const tab = container.tab as any;
-      if (tab) {
-        tab.closeElement.off('click');
-        tab._onCloseClick = (ev) => {
-          ev.stopPropagation();
-          container.close();
-        };
-        tab._onCloseClickFn = tab._onCloseClick.bind(tab);
-        tab.closeElement.click(tab._onCloseClickFn);
-      }
     }
   }
 }
