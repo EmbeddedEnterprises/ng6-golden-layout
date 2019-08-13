@@ -179,7 +179,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
   }
 
   // Map beforeunload to onDestroy to simplify the handling
-  @HostListener('window:beforeunload', ['$event'])
+  @HostListener('window:beforeunload')
   public onUnload() {
     if (!this.poppedIn) {
       this.openedComponents.forEach(c => {
