@@ -67,7 +67,6 @@ const newHeader = function(layoutManager, parent) {
     header.closeButton._$destroy();
     const label = header._getHeaderSetting('close');
     header.closeButton = new lm.__lm.controls.HeaderButton(header, label, 'lm_close', () => {
-      console.log('close stack');
       header.parent.contentItems.forEach(ci => {
         ci.container.close();
       });
