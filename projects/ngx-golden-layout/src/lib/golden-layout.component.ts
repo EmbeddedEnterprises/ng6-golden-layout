@@ -217,6 +217,13 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     }
   }
 
+  public getGoldenLayoutInstance(): GoldenLayout {
+    if (!this.goldenLayout) {
+      throw new Error('Component is not initialized yet');
+    }
+    return this.goldenLayout;
+  }
+
   public getSerializableState(): any {
     if (this.goldenLayout) {
       return this.goldenLayout.toConfig();
@@ -377,10 +384,6 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
       {
         provide: GoldenLayoutComponentState,
         useValue: componentState,
-      },
-      {
-        provide: GoldenLayout,
-        useValue: this.goldenLayout,
       },
       {
         provide: GoldenLayoutEventHub,

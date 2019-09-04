@@ -117,19 +117,26 @@ The original GoldenLayout API may be obtained through the Angular dependency inj
 ```ts
 import * as GoldenLayout from 'golden-layout';
 import { Component, Inject } from '@angular/core';
-import { GoldenLayoutContainer } from '@embedded-enterprises/ng6-golden-layout';
+import { 
+  GoldenLayoutContainer,
+  GoldenLayoutComponentHost,
+  GoldenLayoutComponent,
+} from '@embedded-enterprises/ng6-golden-layout';
 
 @Component({})
 export class TestComponent {
 
   constructor(
-    private goldenLayout: GoldenLayout,
+    @Inject(GoldenLayoutComponentHost) private goldenLayout: GoldenLayoutComponent,
     @Inject(GoldenLayoutContainer) private container: GoldenLayout.Container
-  ) { }
+  ) {
+    this.goldenLayout.getGoldenLayout().selectItem(yourItem);
+  }
 }
 ```
 
 These objects can then be used to manipulate the GoldenLayout.
+**Important**: You must not cache the returned golden layout instance, as it might change as you pop out/in.
 
 ### Component Lifecycle
 
