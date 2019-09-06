@@ -87,6 +87,12 @@ newHeader._template = [
 ].join( '' );
 lm.__lm.controls.Header = newHeader;
 
+const origDragProxy = lm.__lm.controls.DragProxy;
+const dragProxy = function(x, y, dragListener, layoutManager, contentItem, originalParent) {
+  layoutManager.emit('itemDragged', contentItem);
+  return new origDragProxy(x, y, dragListener, layoutManager, contentItem, originalParent);
+}
+lm.__lm.controls.DragProxy = dragProxy;
 
 @Component({
   selector: 'golden-layout-root',
@@ -107,7 +113,25 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
 
   private goldenLayout: GoldenLayout = null;
   private onUnloaded = new Deferred<void>();
-  pushStateChange = () => this.stateChanged.emit();
+  private stateChangePaused = false;
+  private stateChangeRequired = false;
+  pushStateChange = () => {
+    if (this.stateChangePaused) {
+      this.stateChangeRequired = true;
+      return;
+    }
+    this.stateChangeRequired = false;
+    this.stateChanged.emit();
+  };
+  resumeStateChange = () => {
+    this.stateChangePaused = false;
+    if (this.stateChangeRequired) {
+      this.pushStateChange();
+    }
+  }
+  pauseStateChange = () => {
+    this.stateChangePaused = true;
+  };
 
   private topWindow: Window;
   private isChildWindow: boolean;
@@ -272,6 +296,8 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
       return;
     }
     this.goldenLayout.off('stateChanged', this.pushStateChange);
+    this.goldenLayout.off('itemDropped', this.resumeStateChange);
+    this.goldenLayout.off('itemDragged', this.pauseStateChange);
     this.goldenLayout.destroy();
     this.goldenLayout = null;
   }
@@ -316,6 +342,8 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     // Initialize the layout.
     this.goldenLayout.init();
     this.goldenLayout.on('stateChanged', this.pushStateChange);
+    this.goldenLayout.on('itemDragged', this.pauseStateChange);
+    this.goldenLayout.on('itemDropped', this.resumeStateChange);
   }
 
   /**
