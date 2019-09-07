@@ -114,20 +114,19 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
   private goldenLayout: GoldenLayout = null;
   private onUnloaded = new Deferred<void>();
   private stateChangePaused = false;
-  private stateChangeRequired = false;
+  private stateChangeScheduled = false;
   pushStateChange = () => {
-    if (this.stateChangePaused) {
-      this.stateChangeRequired = true;
+    if (this.stateChangePaused || this.stateChangeScheduled) {
       return;
     }
-    this.stateChangeRequired = false;
-    this.stateChanged.emit();
+    this.stateChangeScheduled = true;
+    window.requestAnimationFrame(() => {
+      this.stateChangeScheduled = false;
+      this.stateChanged.emit()
+    });
   };
   resumeStateChange = () => {
     this.stateChangePaused = false;
-    if (this.stateChangeRequired) {
-      this.pushStateChange();
-    }
   }
   pauseStateChange = () => {
     this.stateChangePaused = true;
