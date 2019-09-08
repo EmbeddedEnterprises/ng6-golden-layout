@@ -29,7 +29,7 @@ $ npm install --save ngx-golden-layout
 A manual install of package dependencies will be necessary, too
 
 ```sh
-$ npm install --save golden-layout@1.5.7 jquery
+$ npm install --save golden-layout@1.5.9 jquery
 $ npm install --save-dev @types/jquery
 ```
 
