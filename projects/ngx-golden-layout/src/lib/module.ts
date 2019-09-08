@@ -7,6 +7,7 @@ import { ComponentRegistryService } from './component-registry.service';
 import { MultiWindowInit } from './multiwindow-service';
 import { FallbackComponent } from './fallback';
 import { PluginRegistryService, PluginURLProvider } from './plugin-registry.service';
+import { WindowSynchronizerService } from './window-sync.service';
 
 @NgModule({
   declarations: [GoldenLayoutComponent],
@@ -22,6 +23,7 @@ export class GoldenLayoutModule {
         RootWindowService,
         PluginRegistryService,
         PluginURLProvider,
+        WindowSynchronizerService,
         { provide: APP_INITIALIZER, useValue: MultiWindowInit, multi: true },
         { provide: config.GoldenLayoutComponents, useValue: types, },
         { provide: ANALYZE_FOR_ENTRY_COMPONENTS, useValue: [types, fallback], multi: true },
