@@ -82,7 +82,7 @@ export class TestService {
 }
 
 @Component({
-  template: `<div class="spawn-new"></div><golden-layout-root #comp [layout]="layout$" (stateChanged)="stateChange()"></golden-layout-root>`,
+  template: `<div class="spawn-new"></div><golden-layout-root #comp [layout]="layout$" (stateChanged)="stateChange()" (tabActivated)="tabActivated($event)"></golden-layout-root>`,
   selector: `app-root`,
 })
 export class RootComponent {
@@ -112,6 +112,9 @@ export class RootComponent {
   stateChange() {
     console.log('State changed');
     //console.log('this.stateChange', this.layout.getSerializableState());
+  }
+  tabActivated(tab: any) {
+    console.log('User activated tab:', tab);
   }
 }
 @Component({

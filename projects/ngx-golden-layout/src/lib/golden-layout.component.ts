@@ -108,7 +108,8 @@ lm.__lm.controls.DragProxy = dragProxy;
 export class GoldenLayoutComponent implements OnInit, OnDestroy {
 
   @Input() layout: Observable<GoldenLayout.Config>;
-  @Output() stateChanged = new EventEmitter();
+  @Output() stateChanged = new EventEmitter<never>();
+  @Output() tabActivated = new EventEmitter<GoldenLayout.ContentItem>();
 
   @ViewChild('glroot', { static: true }) private el: ElementRef;
 
@@ -126,12 +127,10 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
       this.stateChanged.emit()
     });
   };
-  resumeStateChange = () => {
-    this.stateChangePaused = false;
-  }
-  pauseStateChange = () => {
-    this.stateChangePaused = true;
-  };
+
+  resumeStateChange = () => this.stateChangePaused = false;
+  pauseStateChange = () => this.stateChangePaused = true;
+  pushTabActivated = (ci: GoldenLayout.ContentItem) => this.tabActivated.emit(ci);
 
   private isChildWindow: boolean;
 
@@ -266,6 +265,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     this.goldenLayout.off('stateChanged', this.pushStateChange);
     this.goldenLayout.off('itemDropped', this.resumeStateChange);
     this.goldenLayout.off('itemDragged', this.pauseStateChange);
+    this.goldenLayout.off('activeContentItemChanged', this.pushTabActivated);
     this.goldenLayout.destroy();
     this.goldenLayout = null;
   }
@@ -312,6 +312,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     this.goldenLayout.on('stateChanged', this.pushStateChange);
     this.goldenLayout.on('itemDragged', this.pauseStateChange);
     this.goldenLayout.on('itemDropped', this.resumeStateChange);
+    this.goldenLayout.on('activeContentItemChanged', this.pushTabActivated);
   }
 
   /**
