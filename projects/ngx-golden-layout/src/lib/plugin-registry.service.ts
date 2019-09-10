@@ -69,7 +69,7 @@ export class PluginURLProvider {
  */
 @Injectable()
 export class PluginRegistryService {
-  private availableDependencies = new Map<string, Promise<any>>();
+  private availableDependencies = new Map<string, any>();
   private loadedPlugins = new Map<string, IPluginState>();
 
   public pluginLoaded$ = new Subject<{ id: string, module: NgModuleRef<any> }>();
@@ -131,7 +131,8 @@ export class PluginRegistryService {
           console.warn('Plugin', moduleId, 'requested unknown dependency', d);
           return Promise.resolve(undefined);
         }
-        return p.catch(err => {
+        const promisifiedP = Promise.resolve(p);
+        return promisifiedP.catch(err => {
           console.warn('Plugin', moduleId, 'dependency', d, 'but load failed', err);
           return undefined;
         });
