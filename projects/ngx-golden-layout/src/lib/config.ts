@@ -26,8 +26,9 @@ export interface PluginDependencyType {
   name: string;
   /**
    * Function that loads the dependency
+   * Might return an object (direct load) OR a promise (deferred loading using import() syntax)
    */
-  loader: Promise<any>;
+  loader: any;
 }
 
 /**
