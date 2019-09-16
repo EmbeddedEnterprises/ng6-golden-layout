@@ -1,4 +1,5 @@
 import { Tab } from 'golden-layout';
+import { Type, StaticProvider } from '@angular/core';
 
 /**
  * Hook invoked after a component's container or the document has been resized.
@@ -81,3 +82,7 @@ export interface GlOnUnload {
    glOnUnload(): void;
 }
 
+export interface GlHeaderItem {
+  headerComponent: Type<any>;
+  additionalTokens?: StaticProvider[];
+}
