@@ -21,6 +21,7 @@ import {
   GlOnUnload,
 } from 'ngx-golden-layout';
 import { BehaviorSubject } from 'rxjs';
+import { GlHeaderItem } from 'projects/ngx-golden-layout/src/lib/hooks';
 
 const CONFIG: GoldenLayout.Config = {
   content: [{
@@ -79,6 +80,14 @@ export class TestService {
     this.id = '_' + Math.random().toString(36).substr(2, 9);
     console.log(`Creating testService, id: ${this.id}`);
   }
+}
+
+@Component({
+  template: `<div>Hello, Header</div>`,
+  selector: `app-header-test`,
+})
+export class HeaderTestComponent {
+
 }
 
 @Component({
@@ -160,7 +169,7 @@ export class TestComponent implements GlOnPopout, GlOnClose, GlOnHide, GlOnShow,
   template: `<h1>Test2</h1>`,
   selector: `app-tested`,
 })
-export class TestedComponent implements OnInit, OnDestroy, GlOnClose {
+export class TestedComponent implements OnInit, OnDestroy, GlOnClose, GlHeaderItem {
   constructor() { }
 
   public ngOnInit(): void {
@@ -169,6 +178,8 @@ export class TestedComponent implements OnInit, OnDestroy, GlOnClose {
   public ngOnDestroy(): void {
     (window.opener || window).console.log(`ngondestroy`);
   }
+
+  public headerComponent = HeaderTestComponent;
 
   public glOnClose(): Promise<void> {
     console.log(`glOnClose`);
@@ -217,7 +228,11 @@ const COMPONENTS: ComponentType[] = [
     RootComponent,
     TestComponent,
     TestedComponent,
-    FailComponent
+    FailComponent,
+    HeaderTestComponent,
+  ],
+  entryComponents: [
+    HeaderTestComponent
   ],
   imports: [
     BrowserModule,
