@@ -22,7 +22,8 @@ import * as GoldenLayout from 'golden-layout';
 import { ComponentRegistryService } from './component-registry.service';
 import { FallbackComponent, FailedComponent } from './fallback';
 import { RootWindowService } from './root-window.service';
-import { Observable, Subscription } from 'rxjs';
+import { Observable, Subscription, BehaviorSubject, of } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 import {
   implementsGlOnResize,
   implementsGlOnShow,
@@ -31,7 +32,8 @@ import {
   implementsGlOnClose,
   implementsGlOnPopin,
   implementsGlOnUnload,
-  implementsGlOnPopout
+  implementsGlOnPopout,
+  implementsGlHeaderItem,
 } from './type-guards';
 import { Deferred } from './deferred';
 import { WindowSynchronizerService } from './window-sync.service';
@@ -95,6 +97,30 @@ const dragProxy = function(x, y, dragListener, layoutManager, contentItem, origi
 }
 lm.__lm.controls.DragProxy = dragProxy;
 
+const origStack = lm.__lm.items.Stack;
+const stackProxy = function(lm, config, parent) {
+  origStack.call(this, lm, config, parent);
+  this.activeContentItem$ = new BehaviorSubject<any>(null);
+  const callback = (ci) => this.activeContentItem$.next(ci);
+  this.on('activeContentItemChanged', callback);
+  const origDestroy = this._$destroy;
+  this._$destroy = () => {
+    this.off('activeContentItemChanged', callback);
+    this.activeContentItem$.complete();
+    origDestroy.call(this);
+  };
+  return this;
+}
+lm.__lm.utils.extend(stackProxy, origStack);
+lm.__lm.items.Stack = stackProxy;
+
+const origPopout = lm.__lm.controls.BrowserPopout;
+const popout = function(config, dimensions, parent, index, lm) {
+  console.log('popout', 'config', config);
+  return new origPopout(config, dimensions, parent, index, lm);
+};
+lm.__lm.controls.BrowserPopout = popout;
+
 @Component({
   selector: 'golden-layout-root',
   styles: [`
@@ -130,7 +156,10 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
 
   resumeStateChange = () => this.stateChangePaused = false;
   pauseStateChange = () => this.stateChangePaused = true;
-  pushTabActivated = (ci: GoldenLayout.ContentItem) => this.tabActivated.emit(ci);
+  pushTabActivated = (ci: GoldenLayout.ContentItem) => {
+    console.log('activeContentItemChanged', ci);
+    this.tabActivated.emit(ci);
+  }
 
   private isChildWindow: boolean;
 
@@ -322,7 +351,27 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
       }
       return this.buildConstructor(type);
     };
-
+    this.goldenLayout.on('stackCreated', (stack) => {
+      // Wait until the content item is loaded and done
+      stack.activeContentItem$.pipe(switchMap((contentItem: any) => {
+        if (!contentItem) {
+          return of(null);
+        }
+        return contentItem.instance;
+      })).subscribe(j => {
+        // This is the currently visible content item, after it's loaded.
+        // Therefore, we can check whether (and what) to render as header component here.
+        console.log('instance', j);
+      }, err => {
+        // Currently visible content item, but we don't have an item or the loading failed, so no header.
+        // -> Destroy the currently rendered header.
+        console.log('Error loading instance:', err)
+      }, () => {
+        // Stack was closed.
+        // -> Destroy the currently rendered header.
+        console.log('Stack collapsed');
+      });
+    })
     // Initialize the layout.
     this.goldenLayout.init();
     this.goldenLayout.on('stateChanged', this.pushStateChange);
@@ -339,6 +388,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     // Can't use an ES6 lambda here, since it is not a constructor
     const self = this;
     return function (container: GoldenLayout.Container, componentState: any) {
+      const d = new Deferred<any>();
       self.ngZone.run(() => {
         // Wait until the component registry can provide a type for the component
         // TBD: Maybe add a timeout here?
@@ -375,8 +425,10 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
           // Listen to containerDestroy and window beforeunload, preventing a double-destroy
           container.on('destroy', destroyFn);
           self.onUnloaded.promise.then(destroyFn);
+          d.resolve(componentRef.instance);
         });
       });
+      return d.promise;
     };
   }
 
