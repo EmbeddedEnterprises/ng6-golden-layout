@@ -85,13 +85,7 @@ export class RootComponent {
   ) {
   }
 
-  @HostListener('window:beforeunload', ['$event'])
-  public onUnload(ev: BeforeUnloadEvent) {
-    ev.preventDefault();
-    ev.returnValue = "Are you sure?";
-    return "Are you sure?";
-  }
-  ngAfterViewInit() {
+    ngAfterViewInit() {
     if (this.root.isChildWindow()) {
       return;
     }
@@ -119,7 +113,7 @@ export class RootComponent {
           componentName: "app-test",
           title: "Second",
       })
-    }, 5000);
+    }, 10000);
   }
   stateChange() {
     console.log('State changed');
