@@ -1,6 +1,6 @@
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { NgModule, Component, Injectable, OnInit, OnDestroy, Inject, ViewChild } from '@angular/core';
+import { NgModule, Component, Injectable, OnInit, OnDestroy, Inject, ViewChild, HostListener } from '@angular/core';
 import * as GoldenLayout from 'golden-layout';
 import {
   GoldenLayoutModule,
@@ -22,24 +22,15 @@ import {
 } from 'ngx-golden-layout';
 import { BehaviorSubject } from 'rxjs';
 
-const CONFIG: GoldenLayout.Config = {
-  content: [{
-    type: "row",
-    content: [
-      {
-        type: 'component',
-        componentName: 'app-test',
-        title: 'Test 1',
-      },
-      {
-        type: 'component',
-        componentName: 'app-test',
-        title: 'Test 2',
-      }
-    ]
-  }]
-};
 const CONFIG2: GoldenLayout.Config = {
+  content: [{
+    type: "component",
+    componentName: "app-test",
+    title: "First",
+  }],
+};
+
+const CONFIG: GoldenLayout.Config = {
   content: [{
     type: "column",
     content: [
@@ -86,12 +77,19 @@ export class TestService {
   selector: `app-root`,
 })
 export class RootComponent {
-  public layout$ = new BehaviorSubject(CONFIG2);
+  public layout$ = new BehaviorSubject(CONFIG);
   @ViewChild(GoldenLayoutComponent, { static: true }) layout: GoldenLayoutComponent;
   constructor(
     private pluginRegistry: PluginRegistryService,
     private root: RootWindowService,
   ) {
+  }
+
+  @HostListener('window:beforeunload', ['$event'])
+  public onUnload(ev: BeforeUnloadEvent) {
+    ev.preventDefault();
+    ev.returnValue = "Are you sure?";
+    return "Are you sure?";
   }
   ngAfterViewInit() {
     if (this.root.isChildWindow()) {
@@ -106,8 +104,22 @@ export class RootComponent {
       });
     });
     setTimeout(() => {
-      this.pluginRegistry.startLoadPlugin('panel-library', 'http://localhost:8000/panel-library.umd.min.js')
+      this.pluginRegistry.startLoadPlugin('panel-library', 'http://localhost:8000/panel-library.umd.min.js');
     }, 3000);
+    setTimeout(() => {
+      this.layout.createNewComponent({
+          type: "component",
+          componentName: "app-test",
+          title: "First",
+      })
+    }, 5000);
+    setTimeout(() => {
+      this.layout.createNewComponent({
+          type: "component",
+          componentName: "app-test",
+          title: "Second",
+      })
+    }, 5000);
   }
   stateChange() {
     console.log('State changed');

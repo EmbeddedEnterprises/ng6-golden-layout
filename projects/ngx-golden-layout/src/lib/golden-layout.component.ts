@@ -174,10 +174,19 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
       this.initializeGoldenLayout(layout);
     });
   }
-
   // Map beforeunload to onDestroy to simplify the handling
   @HostListener('window:beforeunload')
-  public onUnload() {
+  public beforeUnload() {
+    if (this.poppedIn) {
+      this.onUnloaded.promise.then(() => this.ngOnDestroy());
+      this.onUnloaded.resolve();
+      this.windowSync.onUnload();
+    }
+  }
+
+  // Map beforeunload to onDestroy to simplify the handling
+  @HostListener('window:pagehide')
+  public pageHide() {
     if (!this.poppedIn) {
       this.openedComponents.forEach(c => {
         if (implementsGlOnUnload(c)) {
