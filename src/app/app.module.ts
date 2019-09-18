@@ -83,7 +83,8 @@ export class TestService {
 }
 
 @Component({
-  template: `<div>Hello, Header</div>`,
+  template: `<div></div>`,
+  styles: [`:host { display: contents; } div { background-color: yellow; width: 100%; height: 100%; }`],
   selector: `app-header-test`,
 })
 export class HeaderTestComponent {
