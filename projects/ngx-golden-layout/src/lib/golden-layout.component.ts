@@ -17,6 +17,9 @@ import {
   Input,
   Output,
   EventEmitter,
+  StaticProvider,
+  Type,
+  ComponentRef,
 } from '@angular/core';
 import * as GoldenLayout from 'golden-layout';
 import { ComponentRegistryService } from './component-registry.service';
@@ -101,12 +104,17 @@ const origStack = lm.__lm.items.Stack;
 const stackProxy = function(lm, config, parent) {
   origStack.call(this, lm, config, parent);
   this.activeContentItem$ = new BehaviorSubject<any>(null);
-  const callback = (ci) => this.activeContentItem$.next(ci);
+  const callback = (ci) => {
+    if (this.activeContentItem$) {
+      this.activeContentItem$.next(ci)
+    };
+  };
   this.on('activeContentItemChanged', callback);
   const origDestroy = this._$destroy;
   this._$destroy = () => {
     this.off('activeContentItemChanged', callback);
     this.activeContentItem$.complete();
+    this.activeContentItem$ = null;
     origDestroy.call(this);
   };
   return this;
@@ -362,25 +370,55 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
       return this.buildConstructor(type);
     };
     this.goldenLayout.on('stackCreated', (stack) => {
+      debugger;
+      const customHeaderElement = document.createElement('li');
+      customHeaderElement.classList.add('custom-header');
+      customHeaderElement.style.display = 'none';
+      const ctr = stack.header.controlsContainer[0] as HTMLUListElement;
+      let element: ComponentRef<any> = null;
+
+      ctr.prepend(customHeaderElement);
+
+      const disposeControl = () => {
+        customHeaderElement.style.display = 'none';
+        if (element) {
+          customHeaderElement.childNodes.forEach(e => customHeaderElement.removeChild(e));
+          element.destroy();
+          element = null;
+        }
+      };
+      const bootstrapComponent = (ct: Type<any>, tokens: StaticProvider[], injector: Injector) => {
+        if (element) {
+          disposeControl();
+        }
+        console.log('bootstrap!', ct);
+        customHeaderElement.style.display = '';
+        const factory = this.componentFactoryResolver.resolveComponentFactory(ct);
+        const headerInjector = Injector.create(tokens, injector);
+        element = this.viewContainer.createComponent(factory, undefined, injector);
+        customHeaderElement.prepend(element.location.nativeElement);
+      };
+
       // Wait until the content item is loaded and done
       stack.activeContentItem$.pipe(switchMap((contentItem: any) => {
         if (!contentItem) {
           return of(null);
         }
         return contentItem.instance;
-      })).subscribe(j => {
+      })).subscribe((j: ComponentRef<any> | null) => {
         // This is the currently visible content item, after it's loaded.
         // Therefore, we can check whether (and what) to render as header component here.
         console.log('instance', j);
-      }, err => {
-        // Currently visible content item, but we don't have an item or the loading failed, so no header.
-        // -> Destroy the currently rendered header.
-        console.log('Error loading instance:', err)
-      }, () => {
-        // Stack was closed.
-        // -> Destroy the currently rendered header.
-        console.log('Stack collapsed');
-      });
+        if (!j || !implementsGlHeaderItem(j.instance)) {
+          disposeControl();
+        } else {
+          bootstrapComponent(
+            j.instance.headerComponent,
+            j.instance.additionalTokens || [],
+            j.injector
+          );
+        }
+      }, disposeControl, disposeControl);
     })
     // Initialize the layout.
     this.goldenLayout.init();
@@ -435,7 +473,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
           // Listen to containerDestroy and window beforeunload, preventing a double-destroy
           container.on('destroy', destroyFn);
           self.onUnloaded.promise.then(destroyFn);
-          d.resolve(componentRef.instance);
+          d.resolve(componentRef);
         });
       });
       return d.promise;
