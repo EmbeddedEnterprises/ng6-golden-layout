@@ -226,20 +226,27 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     if (!this.goldenLayout) {
       throw new Error("golden layout is not initialized");
     }
-    const content = this.goldenLayout.createContentItem({
-      ...config,
-      type: 'component',
-    }) as any;
+    let myConfig: GoldenLayout.ItemConfig = config;
     const root = this.goldenLayout.root;
     let element: GoldenLayout.ContentItem = null;
     if (!root.contentItems || root.contentItems.length === 0) {
       element = root;
+      // Ensure there is a stack when closing ALL items and creating a new item.
+      myConfig = {
+        type: 'stack',
+        content: [{
+          ...myConfig,
+          type: 'component',
+        }],
+      };
     } else {
       element = this.findStack(root.contentItems);
     }
     if (element === null) {
       throw new Error("this should never happen!");
     }
+
+    const content = this.goldenLayout.createContentItem(myConfig) as any;
     element.addChild(content);
   }
 
