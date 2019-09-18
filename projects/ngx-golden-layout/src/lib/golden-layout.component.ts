@@ -115,8 +115,18 @@ lm.__lm.utils.extend(stackProxy, origStack);
 lm.__lm.items.Stack = stackProxy;
 
 const origPopout = lm.__lm.controls.BrowserPopout;
-const popout = function(config, dimensions, parent, index, lm) {
-  console.log('popout', 'config', config);
+const popout = function(config: GoldenLayout.ItemConfig[], dimensions, parent, index, lm) {
+  if (config.length !== 1) {
+    console.warn('This should not happen, permitting', config);
+  } else {
+    if (config[0].type === 'component') {
+      config = [{
+        type: 'stack',
+        title: config[0].title, // Required for adjustToWindowMode to work. (Line 1282 in 1.5.9)
+        content: [config[0]],
+      }];
+    }
+  }
   return new origPopout(config, dimensions, parent, index, lm);
 };
 lm.__lm.controls.BrowserPopout = popout;
