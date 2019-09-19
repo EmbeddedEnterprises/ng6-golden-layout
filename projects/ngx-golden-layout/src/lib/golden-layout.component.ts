@@ -120,6 +120,21 @@ const stackProxy = function(lm, config, parent) {
   return this;
 }
 lm.__lm.utils.extend(stackProxy, origStack);
+lm.__lm.utils.copy(stackProxy.prototype, {
+  addChild: function(contentItem: GoldenLayout.ItemConfig, index: number) {
+    if (contentItem.type === 'stack') {
+      // We try to pop in a stack into another stack (i.e. nested tab controls.)
+      // This breaks the other stuff in custom header components, therefore it's not recommended.
+      // So we add the items directly into this stack.
+      (contentItem.content || []).forEach((ci, idx) => origStack.prototype.addChild.call(this, ci, index + idx));
+      if (contentItem.content.length) {
+        this.setActiveContentItem(this.contentItems[index + (contentItem as any).activeItemIndex]);
+      }
+    } else {
+      origStack.prototype.addChild.call(this, contentItem, index);
+    }
+  },
+});
 lm.__lm.items.Stack = stackProxy;
 
 const origPopout = lm.__lm.controls.BrowserPopout;
@@ -175,7 +190,6 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
   resumeStateChange = () => this.stateChangePaused = false;
   pauseStateChange = () => this.stateChangePaused = true;
   pushTabActivated = (ci: GoldenLayout.ContentItem) => {
-    console.log('activeContentItemChanged', ci);
     this.tabActivated.emit(ci);
   }
 
@@ -354,7 +368,6 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
       return this.buildConstructor(type);
     };
     this.goldenLayout.on('stackCreated', (stack) => {
-      debugger;
       const customHeaderElement = document.createElement('li');
       customHeaderElement.classList.add('custom-header');
       customHeaderElement.style.display = 'none';
@@ -375,7 +388,6 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
         if (element) {
           disposeControl();
         }
-        console.log('bootstrap!', ct);
         customHeaderElement.style.display = '';
         const factory = this.componentFactoryResolver.resolveComponentFactory(ct);
         const headerInjector = Injector.create(tokens, injector);
@@ -384,11 +396,11 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
       };
 
       // Wait until the content item is loaded and done
-      stack.activeContentItem$.pipe(switchMap((contentItem: any) => {
-        if (!contentItem) {
+      stack.activeContentItem$.pipe(switchMap((contentItem: GoldenLayout.ContentItem) => {
+        if (!contentItem || !contentItem.isComponent) {
           return of(null);
         }
-        return contentItem.instance;
+        return (contentItem as any).instance || of(null);
       })).subscribe((j: ComponentRef<any> | null) => {
         // This is the currently visible content item, after it's loaded.
         // Therefore, we can check whether (and what) to render as header component here.
@@ -403,7 +415,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
           );
         }
       }, disposeControl, disposeControl);
-    })
+    });
     // Initialize the layout.
     this.goldenLayout.init();
     this.goldenLayout.on('stateChanged', this.pushStateChange);
