@@ -60,6 +60,14 @@ const newTab = function(header, contentItem) {
   tab.closeElement.off('click touchstart');
   tab.closeElement.on('click touchstart', (ev) => {
     ev.stopPropagation();
+    if (
+      tab.contentItem.isComponent &&
+      tab.contentItem.config &&
+      tab.contentItem.config.componentState &&
+      tab.contentItem.config.componentState.originalComponent
+    ) {
+      tab.contentItem.config.componentState.originalComponent.container.close();
+    }
     tab.contentItem.container.close();
   });
   return tab;
@@ -120,9 +128,9 @@ lm.__lm.controls.Header = newHeader;
 // Patch the drag proxy in order to have an itemDragged event.
 const origDragProxy = lm.__lm.controls.DragProxy;
 const dragProxy = function(x, y, dragListener, layoutManager, contentItem, originalParent) {
-  if (contentItem && contentItem.config && contentItem.config.state && contentItem.config.state.originalId) {
-    // Check whether the contentItem we have here, is a dummy
-    contentItem = layoutManager._getAllComponents()[contentItem.config.state.originalId];
+  if (contentItem && contentItem.config && contentItem.config.componentState && contentItem.config.componentState.originalId) {
+    // TBD: Fix this stuff to emit the event on the correct tab.
+    return;
   }
   layoutManager.emit('itemDragged', contentItem);
   return new origDragProxy(x, y, dragListener, layoutManager, contentItem, originalParent);
@@ -165,6 +173,14 @@ lm.__lm.utils.copy(stackProxy.prototype, {
       origStack.prototype.addChild.call(this, contentItem, index);
     }
   },
+  setSize: function() {
+    if (this.layoutManager._maximisedItem === this) {
+      // Actually enforce that this item will be the correct size
+      this.element.width(this.layoutManager.container.width());
+      this.element.height(this.layoutManager.container.height());
+    }
+    origStack.prototype.setSize.call(this);
+	},
 });
 lm.__lm.items.Stack = stackProxy;
 
@@ -438,7 +454,8 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
           componentName: 'gl-wrapper',
           title: openedComponents[k].config.title,
           state: { originalId: k },
-          componentState: { originalId: k },
+          reorderEnabled: false,
+          componentState: { originalId: k, originalComponent: openedComponents[k] },
         })),
         isClosable: false,
         isDummy: true,
