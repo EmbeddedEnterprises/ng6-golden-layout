@@ -36,16 +36,11 @@ import {
   implementsGlOnPopin,
   implementsGlOnUnload,
   implementsGlOnPopout,
-  implementsGlHeaderItem,
   uuid,
 } from './type-guards';
 import { Deferred } from './deferred';
 import { WindowSynchronizerService } from './window-sync.service';
-
-export const GoldenLayoutContainer = new InjectionToken('GoldenLayoutContainer');
-export const GoldenLayoutComponentState = new InjectionToken('GoldenLayoutComponentState');
-export const GoldenLayoutEventHub = new InjectionToken('GoldenLayoutEventHub');
-export const GoldenLayoutComponentHost = new InjectionToken('GoldenLayoutComponentHost');
+import { GoldenLayoutContainer, GoldenLayoutComponentState, GoldenLayoutEventHub, GoldenLayoutComponentHost } from './tokens';
 
 interface ComponentInitCallback extends Function {
   (container: GoldenLayout.Container, componentState: any): void;
@@ -367,6 +362,9 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     }
     for (const x of contentItems) {
       if (x.isStack) {
+        if ((x.config as any).isDummy) {
+          continue;
+        }
         return x;
       }
       const s = this.findStack(x.contentItems);
@@ -440,12 +438,15 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
           componentName: 'gl-wrapper',
           title: openedComponents[k].config.title,
           state: { originalId: k },
+          componentState: { originalId: k },
         })),
+        isClosable: false,
+        isDummy: true,
+        state: 'dummy',
         activeItemIndex: componentIdList.findIndex(j => j === parent._activeContentItem.id),
       }
       rootContentItem.addChild(config, 0);
       const ci = rootContentItem.contentItems[0] as any;
-      ci.__dummy = true;
       ci.on('minimised', () => {
         console.log('minimised', ci);
         ci.remove()
@@ -498,22 +499,35 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
       };
 
       // Wait until the content item is loaded and done
-      stack.activeContentItem$.pipe(switchMap((contentItem: GoldenLayout.ContentItem) => {
-        if (!contentItem || !contentItem.isComponent) {
-          return of(null);
-        }
-        return (contentItem as any).instance || of(null);
-      })).subscribe((j: ComponentRef<any> | null) => {
+      stack.activeContentItem$.pipe(
+        switchMap((contentItem: GoldenLayout.ContentItem) => {
+          if (!contentItem || !contentItem.isComponent) {
+            return of(null);
+          }
+          return (contentItem as any).instance || of(null);
+        }), switchMap((cr: ComponentRef<any> | null) => {
+          if (!cr) {
+            return Promise.all([null, null, null]);
+          }
+          const inst = cr.instance.headerComponent;
+          const tokens = cr.instance.additionalTokens;
+          return Promise.all([
+            Promise.resolve(inst),
+            Promise.resolve(tokens),
+            Promise.resolve(cr)
+          ]);
+        })
+      ).subscribe(([header, tokens, componentRef]) => {
         // This is the currently visible content item, after it's loaded.
         // Therefore, we can check whether (and what) to render as header component here.
-        console.log('instance', j);
-        if (!j || !implementsGlHeaderItem(j.instance)) {
+        console.log('instance', componentRef);
+        if (!header || !componentRef) {
           disposeControl();
         } else {
           bootstrapComponent(
-            j.instance.headerComponent,
-            j.instance.additionalTokens || [],
-            j.injector
+            header,
+            tokens || [],
+            componentRef.injector
           );
         }
       }, disposeControl, disposeControl);
