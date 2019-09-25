@@ -2,6 +2,7 @@ import { Inject, Injectable, Optional, Type } from '@angular/core';
 import { ComponentType, GoldenLayoutComponents } from './config';
 import { PluginRegistryService } from './plugin-registry.service';
 import { Deferred } from './deferred';
+import { WrapperComponent } from './wrapper.component';
 
 @Injectable()
 export class ComponentRegistryService {
@@ -13,6 +14,10 @@ export class ComponentRegistryService {
     private pluginRegistry: PluginRegistryService,
   ) {
     (initialComponents || []).forEach(c => this.registerComponent(c));
+    this.registerComponent({
+      name: 'gl-wrapper',
+      type: WrapperComponent,
+    });
 
     this.pluginRegistry.pluginLoaded$.subscribe(({ id, module }) => {
       const registeredTokens = module.injector.get(GoldenLayoutComponents, []);
