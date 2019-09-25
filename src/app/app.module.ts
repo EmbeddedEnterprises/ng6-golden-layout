@@ -51,7 +51,10 @@ const CONFIG: GoldenLayout.Config = {
         title: 'Test 3',
       }
     ]
-  }]
+  }],
+  settings: {
+    maximiseAllItems: true,
+  } as any,
 };
 
 @MultiWindowService<FooService>()

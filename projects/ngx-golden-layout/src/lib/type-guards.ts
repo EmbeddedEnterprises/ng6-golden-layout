@@ -47,3 +47,10 @@ export function implementsGlOnPopout(obj: any): obj is GlOnPopout {
 export function implementsGlHeaderItem(obj: any): obj is GlHeaderItem {
   return typeof obj === 'object' && typeof obj.headerComponent === 'function';
 }
+
+export const uuid = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}

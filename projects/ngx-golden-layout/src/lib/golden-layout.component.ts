@@ -37,6 +37,7 @@ import {
   implementsGlOnUnload,
   implementsGlOnPopout,
   implementsGlHeaderItem,
+  uuid,
 } from './type-guards';
 import { Deferred } from './deferred';
 import { WindowSynchronizerService } from './window-sync.service';
@@ -72,7 +73,42 @@ lm.__lm.controls.Tab = newTab;
 // and calls the correct close method.
 const originalHeader = lm.__lm.controls.Header;
 const newHeader = function(layoutManager, parent) {
+  const maximise = parent._header['maximise'];
+  if (maximise && layoutManager.config.settings.maximiseAllItems === true) {
+    // Check whether we should maximise all stacks and if so, force the header to
+    // not generate a maximise button.
+    delete parent._header['maximise'];
+  }
+
   const header = new originalHeader(layoutManager, parent);
+
+  if (maximise && layoutManager.config.settings.maximiseAllItems === true) {
+    header.maximiseButton = new lm.__lm.controls.HeaderButton(header, maximise, 'lm_maximise', () => {
+      if (parent.__maximised === true) {
+        parent.element.off();
+        parent.callDownwards('_$destroy');
+        return;
+      }
+      console.log('I should maximise all items.');
+      const openedComponents = layoutManager._getAllComponents();
+      const componentIdList = Object.keys(openedComponents);
+      const stack = new lm.__lm.items.Stack(layoutManager, {
+        content: componentIdList.map(k => ({
+          type: 'component',
+          componentName: 'gl-wrapper',
+          title: openedComponents[k].config.title,
+        })),
+        activeItemIndex: componentIdList.findIndex(j => j === parent._activeContentItem.id),
+      }, layoutManager.root);
+      stack.__maximised = true;
+      stack.element.addClass('lm_maximised');
+      layoutManager.root.element.prepend(stack.element);
+      stack.element.width( layoutManager.root.element.width() );
+      stack.element.height( layoutManager.root.element.height() );
+      stack.callDownwards('_$init');
+      stack.callDownwards( 'setSize' );
+    });
+  }
   if (header.closeButton) {
     header.closeButton._$destroy();
     const label = header._getHeaderSetting('close');
@@ -349,6 +385,13 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
 
   private initializeGoldenLayout(layout: any): void {
     this.goldenLayout = new GoldenLayout(layout, $(this.el.nativeElement));
+    //(this.goldenLayout as any)._$maximiseItem = (item) => {
+    //  console.log('maximise', item);
+    //  console.log(this.buildComponentMap(this.goldenLayout.root));
+    //};
+    //(this.goldenLayout as any)._$minimiseItem = (item) => {
+    //  console.log('minimise', item);
+    //};
     const origPopout = this.goldenLayout.createPopout.bind(this.goldenLayout);
     this.goldenLayout.createPopout = (item: GoldenLayout.ContentItem, dim, parent, index) => {
       const rec = [item];
@@ -366,6 +409,20 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
       console.log('beforepopout', item);
       return origPopout(item, dim, parent, index);
     }
+    (this.goldenLayout as any)._getAllComponents = () => {
+      const buildComponentMap = (item: GoldenLayout.ContentItem) => {
+        let ret = {};
+        for (const ci of item.contentItems) {
+          if (ci.isComponent) {
+            ret[ci.id] = ci;
+          } else {
+            ret = { ...ret, ...buildComponentMap(ci) };
+          }
+        }
+        return ret;
+      }
+      return buildComponentMap(this.goldenLayout.root);
+    }
     this.goldenLayout.on('popIn', () => {
       console.log('popIn');
       this.poppedIn = true;
@@ -380,6 +437,9 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     this.goldenLayout.getComponent = (type) => {
       if (isDevMode()) {
         console.log(`Resolving component ${type}`);
+      }
+      if (!type) {
+        return function () {};
       }
       return this.buildConstructor(type);
     };
@@ -407,7 +467,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
         customHeaderElement.style.display = '';
         const factory = this.componentFactoryResolver.resolveComponentFactory(ct);
         const headerInjector = Injector.create(tokens, injector);
-        element = this.viewContainer.createComponent(factory, undefined, injector);
+        element = this.viewContainer.createComponent(factory, undefined, headerInjector);
         customHeaderElement.prepend(element.location.nativeElement);
       };
 
@@ -448,6 +508,9 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     // Can't use an ES6 lambda here, since it is not a constructor
     const self = this;
     return function (container: GoldenLayout.Container, componentState: any) {
+      const glComponent = container.parent;
+      (glComponent as any).id = uuid();
+
       const d = new Deferred<any>();
       self.ngZone.run(() => {
         // Wait until the component registry can provide a type for the component
