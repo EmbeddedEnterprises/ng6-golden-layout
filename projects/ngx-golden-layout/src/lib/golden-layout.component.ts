@@ -54,6 +54,11 @@ interface ComponentInitCallback extends Function {
 // We need to wrap some golden layout internals, so we can intercept close and 'close stack'
 // For close, the tab is wrapped and the close element to change the event handler to close the correct container.
 const lm = GoldenLayout as any;
+
+// This code wraps the original golden-layout Tab
+// A tab is instantiated by the golden-layout Header
+// We rebind the close event listener to properly dispose the angular item container
+// In order to destroy the angular component ref and be able to defer the close.
 const originalTab = lm.__lm.controls.Tab;
 const newTab = function(header, contentItem) {
   const tab = new originalTab(header, contentItem);
@@ -69,8 +74,8 @@ newTab._template = '<li class="lm_tab"><i class="lm_left"></i>' +
 '<i class="lm_right"></i></li>';
 lm.__lm.controls.Tab = newTab;
 
-// Stack close is implemented using a wrapped header which iterates through the content items
-// and calls the correct close method.
+
+// Header is wrapped to catch the maximise and close buttons.
 const originalHeader = lm.__lm.controls.Header;
 const newHeader = function(layoutManager, parent) {
   const maximise = parent._header['maximise'];
@@ -80,33 +85,20 @@ const newHeader = function(layoutManager, parent) {
     delete parent._header['maximise'];
   }
 
+  // Generate the original header
   const header = new originalHeader(layoutManager, parent);
 
+  // Check whether we should maximise all stacks, and if so, generate a custom maximise button
+  // but keep the order with the close button.
   if (maximise && layoutManager.config.settings.maximiseAllItems === true) {
     header.maximiseButton = new lm.__lm.controls.HeaderButton(header, maximise, 'lm_maximise', () => {
-      if (parent.__maximised === true) {
-        parent.element.off();
-        parent.callDownwards('_$destroy');
-        return;
-      }
+      // The maximise button was clicked, so create a dummy stack, containing a wrapper component for each opened component.
       console.log('I should maximise all items.');
-      const openedComponents = layoutManager._getAllComponents();
-      const componentIdList = Object.keys(openedComponents);
-      const stack = new lm.__lm.items.Stack(layoutManager, {
-        content: componentIdList.map(k => ({
-          type: 'component',
-          componentName: 'gl-wrapper',
-          title: openedComponents[k].config.title,
-        })),
-        activeItemIndex: componentIdList.findIndex(j => j === parent._activeContentItem.id),
-      }, layoutManager.root);
-      stack.__maximised = true;
-      stack.element.addClass('lm_maximised');
-      layoutManager.root.element.prepend(stack.element);
-      stack.element.width( layoutManager.root.element.width() );
-      stack.element.height( layoutManager.root.element.height() );
-      stack.callDownwards('_$init');
-      stack.callDownwards( 'setSize' );
+      if (layoutManager._maximisedItem === parent) {
+        parent.toggleMaximise();
+      } else {
+        layoutManager.generateAndMaximiseDummyStack(parent);
+      }
     });
   }
   if (header.closeButton) {
@@ -129,13 +121,20 @@ newHeader._template = [
 ].join( '' );
 lm.__lm.controls.Header = newHeader;
 
+
+// Patch the drag proxy in order to have an itemDragged event.
 const origDragProxy = lm.__lm.controls.DragProxy;
 const dragProxy = function(x, y, dragListener, layoutManager, contentItem, originalParent) {
+  if (contentItem && contentItem.config && contentItem.config.state && contentItem.config.state.originalId) {
+    // Check whether the contentItem we have here, is a dummy
+    contentItem = layoutManager._getAllComponents()[contentItem.config.state.originalId];
+  }
   layoutManager.emit('itemDragged', contentItem);
   return new origDragProxy(x, y, dragListener, layoutManager, contentItem, originalParent);
 }
 lm.__lm.controls.DragProxy = dragProxy;
 
+// Patch the stack in order to have an activeContentItemChanged$ observable
 const origStack = lm.__lm.items.Stack;
 const stackProxy = function(lm, config, parent) {
   origStack.call(this, lm, config, parent);
@@ -157,6 +156,7 @@ const stackProxy = function(lm, config, parent) {
 }
 lm.__lm.utils.extend(stackProxy, origStack);
 lm.__lm.utils.copy(stackProxy.prototype, {
+  // Force stacks to be flattened.
   addChild: function(contentItem: GoldenLayout.ItemConfig, index: number) {
     if (contentItem.type === 'stack') {
       // We try to pop in a stack into another stack (i.e. nested tab controls.)
@@ -224,7 +224,12 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
   };
 
   resumeStateChange = () => this.stateChangePaused = false;
-  pauseStateChange = () => this.stateChangePaused = true;
+  pauseStateChange = () => {
+    this.stateChangePaused = true;
+    if (this.goldenLayout && (this.goldenLayout as any).__maximisedStack) {
+      (this.goldenLayout as any)
+    }
+  }
   pushTabActivated = (ci: GoldenLayout.ContentItem) => {
     this.tabActivated.emit(ci);
   }
@@ -385,13 +390,6 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
 
   private initializeGoldenLayout(layout: any): void {
     this.goldenLayout = new GoldenLayout(layout, $(this.el.nativeElement));
-    //(this.goldenLayout as any)._$maximiseItem = (item) => {
-    //  console.log('maximise', item);
-    //  console.log(this.buildComponentMap(this.goldenLayout.root));
-    //};
-    //(this.goldenLayout as any)._$minimiseItem = (item) => {
-    //  console.log('minimise', item);
-    //};
     const origPopout = this.goldenLayout.createPopout.bind(this.goldenLayout);
     this.goldenLayout.createPopout = (item: GoldenLayout.ContentItem, dim, parent, index) => {
       const rec = [item];
@@ -409,20 +407,51 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
       console.log('beforepopout', item);
       return origPopout(item, dim, parent, index);
     }
-    (this.goldenLayout as any)._getAllComponents = () => {
-      const buildComponentMap = (item: GoldenLayout.ContentItem) => {
-        let ret = {};
-        for (const ci of item.contentItems) {
-          if (ci.isComponent) {
-            ret[ci.id] = ci;
-          } else {
-            ret = { ...ret, ...buildComponentMap(ci) };
-          }
+    const buildComponentMap = (item: GoldenLayout.ContentItem) => {
+      let ret = {};
+      for (const ci of item.contentItems) {
+        if (ci.isComponent) {
+          ret[ci.id] = ci;
+        } else {
+          ret = { ...ret, ...buildComponentMap(ci) };
         }
-        return ret;
       }
-      return buildComponentMap(this.goldenLayout.root);
-    }
+      return ret;
+    };
+    (this.goldenLayout as any)._getAllComponents = () => buildComponentMap(this.goldenLayout.root);
+    (this.goldenLayout as any).generateAndMaximiseDummyStack = (parent) => {
+      const openedComponents = buildComponentMap(this.goldenLayout.root);
+      const componentIdList = Object.keys(openedComponents);
+      if (componentIdList.length === 0) {
+        return; // How did we get here?!
+      }
+
+      // We only have a single child, so we restore the original behavior
+      const rootContentItem = this.goldenLayout.root.contentItems[0];
+      if (rootContentItem.isStack) {
+        rootContentItem.toggleMaximise();
+        return;
+      }
+
+      const config = {
+        type: 'stack',
+        content: componentIdList.map(k => ({
+          type: 'component',
+          componentName: 'gl-wrapper',
+          title: openedComponents[k].config.title,
+          state: { originalId: k },
+        })),
+        activeItemIndex: componentIdList.findIndex(j => j === parent._activeContentItem.id),
+      }
+      rootContentItem.addChild(config, 0);
+      const ci = rootContentItem.contentItems[0] as any;
+      ci.__dummy = true;
+      ci.on('minimised', () => {
+        console.log('minimised', ci);
+        ci.remove()
+      });
+      ci.toggleMaximise();
+    };
     this.goldenLayout.on('popIn', () => {
       console.log('popIn');
       this.poppedIn = true;
@@ -437,9 +466,6 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     this.goldenLayout.getComponent = (type) => {
       if (isDevMode()) {
         console.log(`Resolving component ${type}`);
-      }
-      if (!type) {
-        return function () {};
       }
       return this.buildConstructor(type);
     };
