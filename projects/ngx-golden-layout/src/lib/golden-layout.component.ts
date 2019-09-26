@@ -24,8 +24,8 @@ import * as GoldenLayout from 'golden-layout';
 import { ComponentRegistryService } from './component-registry.service';
 import { FallbackComponent, FailedComponent } from './fallback';
 import { RootWindowService } from './root-window.service';
-import { Observable, Subscription, BehaviorSubject, of } from 'rxjs';
-import { switchMap } from 'rxjs/operators';
+import { Observable, Subscription, BehaviorSubject, of, Subject } from 'rxjs';
+import { switchMap, takeUntil, distinctUntilChanged } from 'rxjs/operators';
 import {
   implementsGlOnResize,
   implementsGlOnShow,
@@ -65,13 +65,25 @@ const newTab = function(header, contentItem) {
       tab.contentItem.config.componentState &&
       tab.contentItem.config.componentState.originalComponent
     ) {
+      // If we have a dummy tab, close the actual tab behind it.
       tab.contentItem.config.componentState.originalComponent.container.close();
+    } else {
+      // Otherwise close our own tab.
+      tab.contentItem.container.close();
     }
-    tab.contentItem.container.close();
   });
   tab.element.off('mousedown touchstart', tab._onTabClickFn);
   tab.element.on('mousedown touchstart', ev => {
     tab._onTabClickFn(ev);
+    let contentItem = tab.contentItem;
+    if (
+      tab.contentItem.isComponent &&
+      tab.contentItem.config &&
+      tab.contentItem.config.componentState &&
+      tab.contentItem.config.componentState.originalComponent
+    ) {
+      contentItem = tab.contentItem.config.componentState.originalComponent;
+    }
     contentItem.layoutManager.emit('tabActivated', contentItem);
   });
   return tab;
@@ -86,14 +98,44 @@ lm.__lm.controls.Tab = newTab;
 const originalHeader = lm.__lm.controls.Header;
 const newHeader = function(layoutManager, parent) {
   const maximise = parent._header['maximise'];
+  const popout = parent._header['popout'];
   if (maximise && layoutManager.config.settings.maximiseAllItems === true) {
     // Check whether we should maximise all stacks and if so, force the header to
     // not generate a maximise button.
     delete parent._header['maximise'];
   }
+  if (popout && layoutManager.config.settings.maximiseAllItems === true) {
+    delete parent._header['popout'];
+  }
 
   // Generate the original header
   const header = new originalHeader(layoutManager, parent);
+
+  // Check whether we should maximise all stacks, and if so, generate a custom popout button
+  // but keep the order with the maximise and close button
+  if (popout && layoutManager.config.settings.maximiseAllItems === true) {
+    header.popoutButton = new lm.__lm.controls.HeaderButton(header, popout, 'lm_popout', () => {
+      let contentItem = header.activeContentItem;
+      if (
+        contentItem.isComponent &&
+        contentItem.config &&
+        contentItem.config.componentState &&
+        contentItem.config.componentState.originalComponent
+      ) {
+        // We are within the dummy stack, our component is a wrapper component
+        // and has a reference to the original (= wrapped) component.
+        // Therefore, popping out the whole stack would be stupid, because it wouldn't leave
+        // any item in this window.
+        contentItem = contentItem.config.componentState.originalComponent;
+        contentItem.popout();
+      } else if (layoutManager.config.settings.popoutWholeStack === true) {
+        // We have a regular stack, so honor the popoutWholeStack setting.
+        header.parent.popout();
+      } else {
+        contentItem.popout();
+      }
+    });
+  }
 
   // Check whether we should maximise all stacks, and if so, generate a custom maximise button
   // but keep the order with the close button.
@@ -227,7 +269,10 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
   private onUnloaded = new Deferred<void>();
   private stateChangePaused = false;
   private stateChangeScheduled = false;
+  private tabsList = new BehaviorSubject<{ [tabId: string]: GoldenLayout.ContentItem }>({});
   pushStateChange = () => {
+    // For each state change, we want to refresh the list of the opened components. At the moment, we only care about the keys.
+    this.tabsList.next((this.goldenLayout as any)._getAllComponents());
     if (this.stateChangePaused || this.stateChangeScheduled) {
       return;
     }
@@ -429,6 +474,10 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
       let ret = {};
       for (const ci of item.contentItems) {
         if (ci.isComponent) {
+          if (ci.config && (ci.config as any).componentState && (ci.config as any).componentState.originalId) {
+            // Skip the dummy components
+            continue;
+          }
           ret[ci.id] = ci;
         } else {
           ret = { ...ret, ...buildComponentMap(ci) };
@@ -438,7 +487,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     };
     (this.goldenLayout as any)._getAllComponents = () => buildComponentMap(this.goldenLayout.root);
     (this.goldenLayout as any).generateAndMaximiseDummyStack = (parent) => {
-      const openedComponents = buildComponentMap(this.goldenLayout.root);
+      const openedComponents = this.tabsList.value;
       const componentIdList = Object.keys(openedComponents);
       if (componentIdList.length === 0) {
         return; // How did we get here?!
@@ -457,7 +506,6 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
           type: 'component',
           componentName: 'gl-wrapper',
           title: openedComponents[k].config.title,
-          state: { originalId: k },
           reorderEnabled: false,
           componentState: { originalId: k, originalComponent: openedComponents[k] },
         })),
@@ -467,12 +515,46 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
         activeItemIndex: componentIdList.findIndex(j => j === parent._activeContentItem.id),
       }
       rootContentItem.addChild(config, 0);
-      const ci = rootContentItem.contentItems[0] as any;
-      ci.on('minimised', () => {
-        console.log('minimised', ci);
-        ci.remove()
+      const myStack = rootContentItem.contentItems[0] as GoldenLayout.ContentItem;
+      const teardown$ = new Subject();
+      myStack.on('minimised', () => {
+        console.log('minimised', myStack);
+        teardown$.next();
+        teardown$.complete();
+        myStack.remove()
       });
-      ci.toggleMaximise();
+      myStack.toggleMaximise();
+      this.tabsList.pipe(
+        takeUntil(teardown$),
+        distinctUntilChanged((a, b) => {
+          const keysA = Object.keys(a);
+          const keysB = new Set(Object.keys(b));
+          return keysA.length === keysB.size && keysA.every(key => keysB.has(key));
+        }),
+      ).subscribe(targetState => {
+        const workingCopy = { ...targetState };
+        const tabs = new Set(Object.keys(workingCopy));
+        const openedTabs = new Set(myStack.contentItems.map(ci => {
+          return (ci.config as any).componentState.originalId;
+        }));
+        for (const key of tabs) {
+          if (openedTabs.has(key)) {
+            openedTabs.delete(key);
+          } else {
+            myStack.addChild({
+              type: 'component',
+              componentName: 'gl-wrapper',
+              title: targetState[key].config.title,
+              reorderEnabled: false,
+              componentState: { originalId: key, originalComponent: targetState[key] },
+            } as any)
+          }
+        }
+        for (const tab of openedTabs) {
+          const tabObj = myStack.contentItems.find(j => (j.config as any).componentState.originalId === tab);
+          tabObj.remove();
+        }
+      });
     };
     this.goldenLayout.on('popIn', () => {
       console.log('popIn');
