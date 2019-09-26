@@ -1,14 +1,22 @@
 import { Component, ViewEncapsulation, Inject, OnInit, ComponentRef, OnDestroy } from '@angular/core';
-import { GlHeaderItem } from './hooks';
+import { GlHeaderItem, GlOnHide, GlOnShow, GlOnResize, GlOnTab } from './hooks';
 import { GoldenLayoutComponentHost, GoldenLayoutComponentState, GoldenLayoutContainer } from './tokens';
-import { implementsGlOnResize } from './type-guards';
+import { implementsGlOnResize, implementsGlOnHide, implementsGlOnShow, implementsGlOnTab } from './type-guards';
 
 @Component({
   selector: 'gl-wrapper',
   encapsulation: ViewEncapsulation.None,
   template: `<div class="wrapper"></div>`
 })
-export class WrapperComponent implements GlHeaderItem, OnInit, OnDestroy {
+export class WrapperComponent implements
+  GlHeaderItem,
+  OnInit,
+  OnDestroy,
+  GlOnHide,
+  GlOnShow,
+  GlOnResize,
+  GlOnTab
+ {
   get headerComponent() {
     if (!this.originalComponent || !this.originalComponent.instance) {
       return undefined;
@@ -62,5 +70,35 @@ export class WrapperComponent implements GlHeaderItem, OnInit, OnDestroy {
     if (implementsGlOnResize(componentRef.instance)) {
       componentRef.instance.glOnResize();
     }
+  }
+
+  glOnHide() {
+    this.originalComponent.instance.then((cr: ComponentRef<any>) => {
+      if (implementsGlOnHide(cr.instance)) {
+        cr.instance.glOnHide();
+      }
+    });
+  }
+  glOnShow() {
+    this.originalComponent.instance.then((cr: ComponentRef<any>) => {
+      if (implementsGlOnShow(cr.instance)) {
+        cr.instance.glOnShow();
+      }
+    });
+  }
+  glOnResize() {
+    this.originalComponent.instance.then((cr: ComponentRef<any>) => {
+      if (implementsGlOnResize(cr.instance)) {
+        cr.instance.glOnResize();
+      }
+    });
+  }
+  glOnTab(tab: any) {
+    this.originalComponent.instance.then((cr: ComponentRef<any>) => {
+      if (implementsGlOnTab(cr.instance)) {
+        debugger;
+        cr.instance.glOnTab(this.originalComponent.tab);
+      }
+    });
   }
 }
