@@ -11,7 +11,6 @@ import {
   Optional,
   Inject,
   NgZone,
-  InjectionToken,
   Injector,
   ViewChild,
   Input,
@@ -69,6 +68,11 @@ const newTab = function(header, contentItem) {
       tab.contentItem.config.componentState.originalComponent.container.close();
     }
     tab.contentItem.container.close();
+  });
+  tab.element.off('mousedown touchstart');
+  tab.element.on('mousedown touchstart', ev => {
+    tab._onTabClickFn(ev);
+    contentItem.layoutManager.emit('tabActivated', contentItem);
   });
   return tab;
 };
@@ -397,7 +401,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     this.goldenLayout.off('stateChanged', this.pushStateChange);
     this.goldenLayout.off('itemDropped', this.resumeStateChange);
     this.goldenLayout.off('itemDragged', this.pauseStateChange);
-    this.goldenLayout.off('activeContentItemChanged', this.pushTabActivated);
+    this.goldenLayout.off('tabActivated', this.pushTabActivated);
     this.goldenLayout.destroy();
     this.goldenLayout = null;
   }
@@ -554,7 +558,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     this.goldenLayout.on('stateChanged', this.pushStateChange);
     this.goldenLayout.on('itemDragged', this.pauseStateChange);
     this.goldenLayout.on('itemDropped', this.resumeStateChange);
-    this.goldenLayout.on('activeContentItemChanged', this.pushTabActivated);
+    this.goldenLayout.on('tabActivated', this.pushTabActivated);
   }
 
   /**
