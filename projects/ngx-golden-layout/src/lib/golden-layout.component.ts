@@ -69,7 +69,7 @@ const newTab = function(header, contentItem) {
     }
     tab.contentItem.container.close();
   });
-  tab.element.off('mousedown touchstart');
+  tab.element.off('mousedown touchstart', tab._onTabClickFn);
   tab.element.on('mousedown touchstart', ev => {
     tab._onTabClickFn(ev);
     contentItem.layoutManager.emit('tabActivated', contentItem);
@@ -541,7 +541,6 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
       ).subscribe(([header, tokens, componentRef]) => {
         // This is the currently visible content item, after it's loaded.
         // Therefore, we can check whether (and what) to render as header component here.
-        console.log('instance', componentRef);
         if (!header || !componentRef) {
           disposeControl();
         } else {
