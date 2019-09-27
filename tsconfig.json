@@ -24,12 +24,6 @@
       ],
       "ngx-golden-layout/*": [
         "dist/ngx-golden-layout/*"
-      ],
-      "panel-library": [
-        "dist/panel-library"
-      ],
-      "panel-library/*": [
-        "dist/panel-library/*"
       ]
     }
   }

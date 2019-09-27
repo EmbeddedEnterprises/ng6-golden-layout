@@ -39,7 +39,7 @@ import {
 } from './type-guards';
 import { Deferred } from './deferred';
 import { WindowSynchronizerService } from './window-sync.service';
-import { GoldenLayoutContainer, GoldenLayoutComponentState, GoldenLayoutEventHub, GoldenLayoutComponentHost } from './tokens';
+import { GoldenLayoutContainer, GoldenLayoutComponentState, GoldenLayoutEventHub, GoldenLayoutComponentHost, IExtendedGoldenLayoutConfig } from './tokens';
 
 interface ComponentInitCallback extends Function {
   (container: GoldenLayout.Container, componentState: any): void;
@@ -259,7 +259,7 @@ lm.__lm.controls.BrowserPopout = popout;
 })
 export class GoldenLayoutComponent implements OnInit, OnDestroy {
 
-  @Input() layout: Observable<GoldenLayout.Config>;
+  @Input() layout: Observable<IExtendedGoldenLayoutConfig>;
   @Output() stateChanged = new EventEmitter<never>();
   @Output() tabActivated = new EventEmitter<GoldenLayout.ContentItem>();
 
