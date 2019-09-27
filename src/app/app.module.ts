@@ -19,6 +19,8 @@ import {
   GlOnPopin,
   GlOnResize,
   GlOnUnload,
+  IExtendedGoldenLayoutConfig,
+  IExtendedGoldenLayoutContainer,
 } from 'ngx-golden-layout';
 import { BehaviorSubject } from 'rxjs';
 import { GlHeaderItem } from 'projects/ngx-golden-layout/src/lib/hooks';
@@ -31,7 +33,7 @@ const CONFIG2: GoldenLayout.Config = {
   }],
 };
 
-const CONFIG: GoldenLayout.Config = {
+const CONFIG: IExtendedGoldenLayoutConfig = {
   content: [{
     type: "column",
     content: [
@@ -132,7 +134,7 @@ export class RootComponent {
     console.log('State changed');
     //console.log('this.stateChange', this.layout.getSerializableState());
   }
-  tabActivated(tab: any) {
+  tabActivated(tab: IExtendedGoldenLayoutContainer) {
     console.log('User activated tab:', tab);
   }
 }

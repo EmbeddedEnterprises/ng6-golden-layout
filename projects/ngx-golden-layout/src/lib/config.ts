@@ -1,4 +1,5 @@
 import { InjectionToken, Type } from '@angular/core';
+import * as GoldenLayout from 'golden-layout';
 
 export interface ComponentType {
   /**
@@ -42,3 +43,19 @@ export const GoldenLayoutComponents = new InjectionToken<ComponentType[]>('Compo
  * This token can use multi: true
  */
 export const GoldenLayoutPluginDependency = new InjectionToken<PluginDependencyType[]>('Dependencies');
+
+export interface IExtendedGoldenLayoutConfig extends GoldenLayout.Config {
+  settings: GoldenLayout.Config['settings'] & {
+    /**
+     * Use alternate maximise method that moves *all* tabs to the single root.
+     */
+    maximiseAllItems?: boolean;
+  };
+}
+
+export interface IExtendedGoldenLayoutContainer extends GoldenLayout.Container {
+  /**
+   * Unique id for the container
+   */
+  id: string;
+}
