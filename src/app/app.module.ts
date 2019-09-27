@@ -56,7 +56,7 @@ const CONFIG: IExtendedGoldenLayoutConfig = {
   }],
   settings: {
     maximiseAllItems: true,
-  } as any,
+  }
 };
 
 @MultiWindowService<FooService>()
