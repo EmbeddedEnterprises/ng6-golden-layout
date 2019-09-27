@@ -185,7 +185,8 @@ lm.__lm.controls.DragProxy = dragProxy;
 
 // Patch the stack in order to have an activeContentItemChanged$ observable
 const origStack = lm.__lm.items.Stack;
-const stackProxy = function(lm, config, parent) {
+function MyStack(lm, config, parent) {
+  console.log(lm, config, parent, this);
   origStack.call(this, lm, config, parent);
   this.activeContentItem$ = new BehaviorSubject<any>(null);
   const callback = (ci) => {
@@ -203,32 +204,31 @@ const stackProxy = function(lm, config, parent) {
   };
   return this;
 }
-lm.__lm.utils.extend(stackProxy, origStack);
-lm.__lm.utils.copy(stackProxy.prototype, {
-  // Force stacks to be flattened.
-  addChild: function(contentItem: GoldenLayout.ItemConfig, index: number) {
-    if (contentItem.type === 'stack') {
-      // We try to pop in a stack into another stack (i.e. nested tab controls.)
-      // This breaks the other stuff in custom header components, therefore it's not recommended.
-      // So we add the items directly into this stack.
-      (contentItem.content || []).forEach((ci, idx) => origStack.prototype.addChild.call(this, ci, index + idx));
-      if (contentItem.content.length) {
-        this.setActiveContentItem(this.contentItems[index + (contentItem as any).activeItemIndex]);
-      }
-    } else {
-      origStack.prototype.addChild.call(this, contentItem, index);
+MyStack.prototype = Object.create(origStack.prototype);
+
+// Force stacks to be flattened.
+MyStack.prototype['addChild'] = function(contentItem: GoldenLayout.ItemConfig, index: number) {
+  if (contentItem.type === 'stack') {
+    // We try to pop in a stack into another stack (i.e. nested tab controls.)
+    // This breaks the other stuff in custom header components, therefore it's not recommended.
+    // So we add the items directly into this stack.
+    (contentItem.content || []).forEach((ci, idx) => origStack.prototype.addChild.call(this, ci, index + idx));
+    if (contentItem.content.length) {
+      this.setActiveContentItem(this.contentItems[index + (contentItem as any).activeItemIndex]);
     }
-  },
-  setSize: function() {
-    if (this.layoutManager._maximisedItem === this) {
-      // Actually enforce that this item will be the correct size
-      this.element.width(this.layoutManager.container.width());
-      this.element.height(this.layoutManager.container.height());
-    }
-    origStack.prototype.setSize.call(this);
-	},
-});
-lm.__lm.items.Stack = stackProxy;
+  } else {
+    origStack.prototype.addChild.call(this, contentItem, index);
+  }
+};
+MyStack.prototype['setSize'] = function() {
+  if (this.layoutManager._maximisedItem === this) {
+    // Actually enforce that this item will be the correct size
+    this.element.width(this.layoutManager.container.width());
+    this.element.height(this.layoutManager.container.height());
+  }
+  origStack.prototype.setSize.call(this);
+};
+lm.__lm.items.Stack = MyStack;
 
 const origPopout = lm.__lm.controls.BrowserPopout;
 const popout = function(config: GoldenLayout.ItemConfig[], dimensions, parent, index, lm) {
