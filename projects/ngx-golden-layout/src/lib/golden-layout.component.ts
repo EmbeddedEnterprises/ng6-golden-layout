@@ -196,7 +196,12 @@ function MyStack(lm, config, parent) {
   };
   this.on('activeContentItemChanged', callback);
   const origDestroy = this._$destroy;
+  this.___destroyed = false;
   this._$destroy = () => {
+    if (this.___destroyed) {
+      return;
+    }
+    this.___destroyed = true;
     this.off('activeContentItemChanged', callback);
     this.activeContentItem$.complete();
     this.activeContentItem$ = null;
