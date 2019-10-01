@@ -39,7 +39,13 @@ import {
 } from './type-guards';
 import { Deferred } from './deferred';
 import { WindowSynchronizerService } from './window-sync.service';
-import { GoldenLayoutContainer, GoldenLayoutComponentState, GoldenLayoutEventHub, GoldenLayoutComponentHost, IExtendedGoldenLayoutConfig } from './tokens';
+import {
+  GoldenLayoutContainer,
+  GoldenLayoutComponentState,
+  GoldenLayoutEventHub,
+  GoldenLayoutComponentHost
+} from './tokens';
+import { IExtendedGoldenLayoutConfig } from './config';
 
 interface ComponentInitCallback extends Function {
   (container: GoldenLayout.Container, componentState: any): void;
