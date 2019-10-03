@@ -54,23 +54,28 @@ interface ComponentInitCallback extends Function {
 // We need to wrap some golden layout internals, so we can intercept close and 'close stack'
 // For close, the tab is wrapped and the close element to change the event handler to close the correct container.
 const lm = GoldenLayout as any;
+const isCloned = (tab) => tab.contentItem.isComponent &&
+tab.contentItem.config &&
+tab.contentItem.config.componentState &&
+tab.contentItem.config.componentState.originalComponent;
 
 // This code wraps the original golden-layout Tab
 // A tab is instantiated by the golden-layout Header
 // We rebind the close event listener to properly dispose the angular item container
 // In order to destroy the angular component ref and be able to defer the close.
 const originalTab = lm.__lm.controls.Tab;
-const newTab = function(header, contentItem) {
-  const tab = new originalTab(header, contentItem);
+const newTab = function(header, tabContentItem) {
+  const tab = new originalTab(header, tabContentItem);
+
+  /**
+   * This piece of code implements close functionality for the tab close.
+   * If we have a cloned tab, i.e. one which is contained in a maximised dummy stack
+   * we close the container backing the tab.
+   */
   tab.closeElement.off('click touchstart');
   tab.closeElement.on('click touchstart', (ev) => {
     ev.stopPropagation();
-    if (
-      tab.contentItem.isComponent &&
-      tab.contentItem.config &&
-      tab.contentItem.config.componentState &&
-      tab.contentItem.config.componentState.originalComponent
-    ) {
+    if (isCloned(tab)) {
       // If we have a dummy tab, close the actual tab behind it.
       tab.contentItem.config.componentState.originalComponent.container.close();
     } else {
@@ -78,20 +83,40 @@ const newTab = function(header, contentItem) {
       tab.contentItem.container.close();
     }
   });
-  tab.element.off('mousedown touchstart', tab._onTabClickFn);
+
+  /**
+   * This script emits a tabActivated event for the correct content item
+   * when running in a maximised dummy stack.
+   */
   tab.element.on('mousedown touchstart', ev => {
-    tab._onTabClickFn(ev);
     let contentItem = tab.contentItem;
-    if (
-      tab.contentItem.isComponent &&
-      tab.contentItem.config &&
-      tab.contentItem.config.componentState &&
-      tab.contentItem.config.componentState.originalComponent
-    ) {
+    if (isCloned(tab)) {
       contentItem = tab.contentItem.config.componentState.originalComponent;
     }
     contentItem.layoutManager.emit('tabActivated', contentItem);
   });
+
+  if (isCloned(tab) && tab._layoutManager.config.settings.reorderEnabled === true) {
+    // Reimplement tab drag start by redirecting the tab state.
+    tab.element.on('mousedown touchstart', (ev) => {
+      const originalTab = tab.contentItem.config.componentState.originalTab;
+      console.log('myId', tab.contentItem.id, 'origid', tab.contentItem.config.componentState.originalComponent.id);
+      console.log(tab.contentItem.parent, header.layoutManager._maximisedItem === tab.contentItem.parent, originalTab);
+      if (originalTab && originalTab._dragListener) {
+        const dl = originalTab._dragListener;
+        const destroyDummy = () => {
+          dl.off('dragStart', destroyDummy, dl);
+          if (header.layoutManager._maximisedItem === tab.contentItem.parent) {
+            tab.contentItem.parent.toggleMaximise();
+          }
+        };
+        dl.off('dragStart', originalTab._onDragStart, originalTab);
+        dl.on('dragStart', destroyDummy, dl);
+        dl.on('dragStart', originalTab._onDragStart, originalTab);
+        dl._fDown(ev);
+      }
+    });
+  }
   return tab;
 };
 newTab._template = '<li class="lm_tab"><i class="lm_left"></i>' +
@@ -180,11 +205,8 @@ lm.__lm.controls.Header = newHeader;
 // Patch the drag proxy in order to have an itemDragged event.
 const origDragProxy = lm.__lm.controls.DragProxy;
 const dragProxy = function(x, y, dragListener, layoutManager, contentItem, originalParent) {
-  if (contentItem && contentItem.config && contentItem.config.componentState && contentItem.config.componentState.originalId) {
-    // TBD: Fix this stuff to emit the event on the correct tab.
-    return;
-  }
   layoutManager.emit('itemDragged', contentItem);
+  console.log('new dragProxy', contentItem);
   return new origDragProxy(x, y, dragListener, layoutManager, contentItem, originalParent);
 }
 lm.__lm.controls.DragProxy = dragProxy;
@@ -518,7 +540,11 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
           componentName: 'gl-wrapper',
           title: openedComponents[k].config.title,
           reorderEnabled: false,
-          componentState: { originalId: k, originalComponent: openedComponents[k] },
+          componentState: {
+            originalId: k,
+            originalComponent: openedComponents[k],
+            originalTab: (openedComponents[k] as any).tab,
+          },
         })),
         isClosable: false,
         isDummy: true,
@@ -557,7 +583,11 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
               componentName: 'gl-wrapper',
               title: targetState[key].config.title,
               reorderEnabled: false,
-              componentState: { originalId: key, originalComponent: targetState[key] },
+              componentState: {
+                originalId: key,
+                originalComponent: targetState[key],
+                originalTab: (targetState[key] as any).tab,
+              },
             } as any)
           }
         }
