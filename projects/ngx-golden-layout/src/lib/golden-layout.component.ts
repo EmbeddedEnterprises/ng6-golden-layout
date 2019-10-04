@@ -333,6 +333,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
   private layoutSubscription: Subscription;
   private openedComponents = [];
   private poppedIn = false;
+  private _eventEmitter = new lm.__lm.utils.EventEmitter();
 
   @HostListener('window:resize')
   public onResize(): void {
@@ -406,6 +407,8 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     // or within the root window, where we HAVE to restore the original tick method
     this.appref.tick = (this.appref as any).__tick;
     this.destroyGoldenLayout();
+    // Discard all previously made subscriptions.
+    this._eventEmitter._mSubscriptions = { [lm.__lm.utils.EventEmitter.ALL_EVENT]: [] };
 
     if (this.isChildWindow) {
       console.log = (console as any).__log;
@@ -417,6 +420,10 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
       throw new Error('Component is not initialized yet');
     }
     return this.goldenLayout;
+  }
+
+  public addEvent(kind: string, callback: Function, context?: any) {
+    this._eventEmitter.on(kind, callback, context);
   }
 
   public getSerializableState(): any {
@@ -480,6 +487,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     this.goldenLayout.off('itemDropped', this.resumeStateChange);
     this.goldenLayout.off('itemDragged', this.pauseStateChange);
     this.goldenLayout.off('tabActivated', this.pushTabActivated);
+    this.goldenLayout.off(lm.__lm.utils.EventEmitter.ALL_EVENT, this._eventEmitter.emit, this._eventEmitter);
     this.goldenLayout.destroy();
     this.goldenLayout = null;
   }
@@ -681,6 +689,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     this.goldenLayout.on('itemDragged', this.pauseStateChange);
     this.goldenLayout.on('itemDropped', this.resumeStateChange);
     this.goldenLayout.on('tabActivated', this.pushTabActivated);
+    this.goldenLayout.on(lm.__lm.utils.EventEmitter.ALL_EVENT, this._eventEmitter.emit, this._eventEmitter);
   }
 
   /**

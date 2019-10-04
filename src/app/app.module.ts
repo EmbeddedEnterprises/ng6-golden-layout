@@ -129,6 +129,9 @@ export class RootComponent {
           title: "Second",
       })
     }, 10000);
+    this.layout.addEvent('tabActivated', () => {
+      console.log(arguments);
+    }, {});
   }
   stateChange() {
     console.log('State changed');
