@@ -209,6 +209,7 @@ const dragProxy = function(x, y, dragListener, layoutManager, contentItem, origi
   console.log('new dragProxy', contentItem);
   return new origDragProxy(x, y, dragListener, layoutManager, contentItem, originalParent);
 }
+dragProxy._template = origDragProxy._template;
 lm.__lm.controls.DragProxy = dragProxy;
 
 // Patch the stack in order to have an activeContentItemChanged$ observable
