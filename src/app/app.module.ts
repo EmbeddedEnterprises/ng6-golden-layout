@@ -59,7 +59,7 @@ const CONFIG: IExtendedGoldenLayoutConfig = {
   }
 };
 
-@MultiWindowService<FooService>()
+@MultiWindowService<FooService>('FooService')
 @Injectable()
 export class FooService {
   constructor() {
@@ -67,7 +67,7 @@ export class FooService {
   }
 }
 
-@MultiWindowService<TestService>()
+@MultiWindowService<TestService>('TestService')
 @Injectable()
 export class TestService {
   public id: string;
@@ -217,18 +217,20 @@ export class FailComponent {
   constructor(@Inject(FailedComponent) public componentName: string) { }
 }
 
-const DEPS: PluginDependencyType[] = [{
-  name: '@angular/core',
-  loader: import('@angular/core'),
-}, {
-  name: '@angular/common',
-  loader: import('@angular/common'),
-}, {
-  name: 'ngx-golden-layout',
-  loader: import('ngx-golden-layout'),
-}];
+export const DEPS: PluginDependencyType[] = [
+  //{
+  //  name: '@angular/core',
+  //  loader: import('@angular/core'),
+  //}, {
+  //  name: '@angular/common',
+  //  loader: import('@angular/common'),
+  //}, {
+  //  name: 'ngx-golden-layout',
+  //  loader: import('ngx-golden-layout'),
+  //}
+];
 
-const COMPONENTS: ComponentType[] = [
+export const COMPONENTS: ComponentType[] = [
   {
     name: 'app-test',
     type: TestComponent,

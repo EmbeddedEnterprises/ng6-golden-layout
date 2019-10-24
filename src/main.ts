@@ -6,7 +6,6 @@ import { environment } from './environments/environment';
 import { MultiWindowInit } from 'ngx-golden-layout';
 import * as $ from 'jquery';
 
-
 if (environment.production) {
   enableProdMode();
 }

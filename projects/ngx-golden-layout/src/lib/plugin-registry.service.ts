@@ -22,7 +22,7 @@ interface IPluginURL {
  * Because we can't have progress reporting about all windows, we also don't
  * return any progress/success indicator here.
  */
-@MultiWindowService<PluginURLProvider>()
+@MultiWindowService<PluginURLProvider>('_gl__PluginURLProvider')
 @Injectable()
 export class PluginURLProvider {
   private loadedURLs = new Map<string, string>();
