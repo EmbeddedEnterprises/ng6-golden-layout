@@ -32,10 +32,14 @@ export function MultiWindowService<T>() {
       }
       return rootWindow.__services.get(constr.name);
     }) as any;
-    ///if (window === rootWindow) {
-    ///  const metadata = (Reflect as any).getMetadata('design:paramtypes', constr);
-    ///  (Reflect as any).metadata('design:paramtypes', metadata)(newConstructor);
-    ///}
+    try {
+      if (window === rootWindow) {
+        const metadata = (Reflect as any).getMetadata('design:paramtypes', constr);
+        (Reflect as any).metadata('design:paramtypes', metadata)(newConstructor);
+      }
+    } catch {
+      // obviously, we're in ivy.
+    }
     return newConstructor as Constructor<T>;
   };
 }
