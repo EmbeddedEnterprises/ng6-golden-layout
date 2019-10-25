@@ -54,11 +54,27 @@ interface ComponentInitCallback extends Function {
 // We need to wrap some golden layout internals, so we can intercept close and 'close stack'
 // For close, the tab is wrapped and the close element to change the event handler to close the correct container.
 const lm = GoldenLayout as any;
-const isCloned = (tab) => tab.contentItem.isComponent &&
-tab.contentItem.config &&
-tab.contentItem.config.componentState &&
-tab.contentItem.config.componentState.originalComponent;
+const isCloned = (contentItem: GoldenLayout.ContentItem) => contentItem.isComponent &&
+contentItem.config &&
+(contentItem.config as GoldenLayout.ComponentConfig).componentState &&
+(contentItem.config as GoldenLayout.ComponentConfig).componentState.originalId;
 
+const getComponent = (lm: GoldenLayout, id: string): any => {
+  const itemList = lm.root.getItemsById(id);
+  if (itemList.length !== 1) {
+    console.warn('non unique ID found: ' + id);
+    return undefined;
+  }
+  return itemList[0];
+};
+const originalComponent = (contentItem: GoldenLayout.ContentItem) => getComponent(
+  contentItem.layoutManager,
+  (contentItem.config as GoldenLayout.ComponentConfig).componentState.originalId,
+);
+const tabFromId = (contentItem: GoldenLayout.ContentItem) => {
+  const ci = originalComponent(contentItem);
+  return ci ? ci.tab : undefined;
+};
 // This code wraps the original golden-layout Tab
 // A tab is instantiated by the golden-layout Header
 // We rebind the close event listener to properly dispose the angular item container
@@ -75,9 +91,12 @@ const newTab = function(header, tabContentItem) {
   tab.closeElement.off('click touchstart');
   tab.closeElement.on('click touchstart', (ev) => {
     ev.stopPropagation();
-    if (isCloned(tab)) {
-      // If we have a dummy tab, close the actual tab behind it.
-      tab.contentItem.config.componentState.originalComponent.container.close();
+    if (isCloned(tab.contentItem)) {
+      const c = originalComponent(tab.contentItem);
+      if (c && c.isComponent) {
+        // If we have a dummy tab, close the actual tab behind it.
+        c.container.close();
+      }
     } else {
       // Otherwise close our own tab.
       tab.contentItem.container.close();
@@ -90,18 +109,16 @@ const newTab = function(header, tabContentItem) {
    */
   tab.element.on('mousedown touchstart', ev => {
     let contentItem = tab.contentItem;
-    if (isCloned(tab)) {
-      contentItem = tab.contentItem.config.componentState.originalComponent;
+    if (isCloned(contentItem)) {
+      contentItem = originalComponent(tab.contentItem);
     }
     contentItem.layoutManager.emit('tabActivated', contentItem);
   });
 
-  if (isCloned(tab) && tab._layoutManager.config.settings.reorderEnabled === true) {
+  if (isCloned(tab.contentItem) && tab._layoutManager.config.settings.reorderEnabled === true) {
     // Reimplement tab drag start by redirecting the tab state.
     tab.element.on('mousedown touchstart', (ev) => {
-      const originalTab = tab.contentItem.config.componentState.originalTab;
-      console.log('myId', tab.contentItem.id, 'origid', tab.contentItem.config.componentState.originalComponent.id);
-      console.log(tab.contentItem.parent, header.layoutManager._maximisedItem === tab.contentItem.parent, originalTab);
+      const originalTab = tabFromId(tab.contentItem);
       if (originalTab && originalTab._dragListener) {
         const dl = originalTab._dragListener;
         const destroyDummy = () => {
@@ -147,17 +164,12 @@ const newHeader = function(layoutManager, parent) {
   if (popout && layoutManager.config.settings.maximiseAllItems === true) {
     header.popoutButton = new lm.__lm.controls.HeaderButton(header, popout, 'lm_popout', () => {
       let contentItem = header.activeContentItem;
-      if (
-        contentItem.isComponent &&
-        contentItem.config &&
-        contentItem.config.componentState &&
-        contentItem.config.componentState.originalComponent
-      ) {
+      if (isCloned(contentItem)) {
         // We are within the dummy stack, our component is a wrapper component
         // and has a reference to the original (= wrapped) component.
         // Therefore, popping out the whole stack would be stupid, because it wouldn't leave
         // any item in this window.
-        contentItem = contentItem.config.componentState.originalComponent;
+        contentItem = originalComponent(contentItem);
         contentItem.popout();
       } else if (layoutManager.config.settings.popoutWholeStack === true) {
         // We have a regular stack, so honor the popoutWholeStack setting.
@@ -318,12 +330,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
   };
 
   resumeStateChange = () => this.stateChangePaused = false;
-  pauseStateChange = () => {
-    this.stateChangePaused = true;
-    if (this.goldenLayout && (this.goldenLayout as any).__maximisedStack) {
-      (this.goldenLayout as any)
-    }
-  }
+  pauseStateChange = () => this.stateChangePaused = true;
   pushTabActivated = (ci: GoldenLayout.ContentItem) => {
     this.tabActivated.emit(ci);
   }
@@ -429,7 +436,22 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
 
   public getSerializableState(): any {
     if (this.goldenLayout) {
-      return this.goldenLayout.toConfig();
+      const configObj = this.goldenLayout.toConfig();
+      const wrapperMax = (this.goldenLayout as any).__wrapperMaximisedItemId;
+      if (wrapperMax) {
+        configObj.maximisedItemId = wrapperMax;
+        const filterContent = (ci) => {
+          if (ci.type === 'stack' && ci.isDummy) {
+            return false;
+          }
+          if (ci.type !== 'component') {
+            ci.content = ci.content.filter(filterContent);
+          }
+          return true;
+        }
+        configObj.content = configObj.content.filter(filterContent);
+      }
+      return configObj;
     }
     return null;
   }
@@ -488,6 +510,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     this.goldenLayout.off('itemDropped', this.resumeStateChange);
     this.goldenLayout.off('itemDragged', this.pauseStateChange);
     this.goldenLayout.off('tabActivated', this.pushTabActivated);
+    this.goldenLayout.off('initialised');
     this.goldenLayout.off(lm.__lm.utils.EventEmitter.ALL_EVENT, this._eventEmitter.emit, this._eventEmitter);
     this.goldenLayout.destroy();
     this.goldenLayout = null;
@@ -528,8 +551,8 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
       return ret;
     };
     (this.goldenLayout as any)._getAllComponents = () => buildComponentMap(this.goldenLayout.root);
-    (this.goldenLayout as any).generateAndMaximiseDummyStack = (parent) => {
-      const openedComponents = this.tabsList.value;
+    (this.goldenLayout as any).generateAndMaximiseDummyStack = (parent, item) => {
+      const openedComponents = buildComponentMap(this.goldenLayout.root);
       const componentIdList = Object.keys(openedComponents);
       if (componentIdList.length === 0) {
         return; // How did we get here?!
@@ -551,20 +574,24 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
           reorderEnabled: false,
           componentState: {
             originalId: k,
-            originalComponent: openedComponents[k],
-            originalTab: (openedComponents[k] as any).tab,
           },
         })),
         isClosable: false,
         isDummy: true,
         state: 'dummy',
-        activeItemIndex: componentIdList.findIndex(j => j === parent._activeContentItem.id),
+        activeItemIndex: componentIdList.findIndex(j => j === (item || parent._activeContentItem.id)),
       }
       rootContentItem.addChild(config, 0);
+
       const myStack = rootContentItem.contentItems[0] as GoldenLayout.ContentItem;
       const teardown$ = new Subject();
+      (this.goldenLayout as any).__wrapperMaximisedItemId = parent._activeContentItem.id;
+      (myStack as any).activeContentItem$.subscribe((ci) => {
+        (this.goldenLayout as any).__wrapperMaximisedItemId = ci.config.componentState.originalId;
+      });
       myStack.on('minimised', () => {
         console.log('minimised', myStack);
+        (this.goldenLayout as any).__wrapperMaximisedItemId = null;
         teardown$.next();
         teardown$.complete();
         myStack.remove()
@@ -594,8 +621,6 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
               reorderEnabled: false,
               componentState: {
                 originalId: key,
-                originalComponent: targetState[key],
-                originalTab: (targetState[key] as any).tab,
               },
             } as any)
           }
@@ -685,6 +710,16 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
       }, disposeControl, disposeControl);
     });
     // Initialize the layout.
+    this.goldenLayout.on('initialised', () => {
+      window.requestAnimationFrame(() => {
+        if (layout.maximisedItemId) {
+          const c = getComponent(this.goldenLayout, layout.maximisedItemId);
+          if (c) {
+            (this.goldenLayout as any).generateAndMaximiseDummyStack(c.parent, layout.maximisedItemId);
+          }
+        }
+      });
+    });
     this.goldenLayout.init();
     this.goldenLayout.on('stateChanged', this.pushStateChange);
     this.goldenLayout.on('itemDragged', this.pauseStateChange);
@@ -702,7 +737,12 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     const self = this;
     return function (container: GoldenLayout.Container, componentState: any) {
       const glComponent = container.parent;
-      (glComponent as any).id = uuid();
+      if (glComponent.config.id) {
+        glComponent.id = glComponent.config.id as string;
+      } else {
+        glComponent.id = uuid();
+        glComponent.config.id = glComponent.id;
+      }
 
       const d = new Deferred<any>();
       self.ngZone.run(() => {
