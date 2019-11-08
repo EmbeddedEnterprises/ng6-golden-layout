@@ -59,7 +59,7 @@ contentItem.config &&
 (contentItem.config as GoldenLayout.ComponentConfig).componentState &&
 (contentItem.config as GoldenLayout.ComponentConfig).componentState.originalId;
 
-const getComponent = (lm: GoldenLayout, id: string): any => {
+export const GetComponentFromLayoutManager = (lm: GoldenLayout, id: string): any => {
   const itemList = lm.root.getItemsById(id);
   if (itemList.length !== 1) {
     console.warn('non unique ID found: ' + id);
@@ -67,7 +67,7 @@ const getComponent = (lm: GoldenLayout, id: string): any => {
   }
   return itemList[0];
 };
-const originalComponent = (contentItem: GoldenLayout.ContentItem) => getComponent(
+const originalComponent = (contentItem: GoldenLayout.ContentItem) => GetComponentFromLayoutManager(
   contentItem.layoutManager,
   (contentItem.config as GoldenLayout.ComponentConfig).componentState.originalId,
 );
@@ -713,7 +713,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     this.goldenLayout.on('initialised', () => {
       window.requestAnimationFrame(() => {
         if (layout.maximisedItemId) {
-          const c = getComponent(this.goldenLayout, layout.maximisedItemId);
+          const c = GetComponentFromLayoutManager(this.goldenLayout, layout.maximisedItemId);
           if (c) {
             (this.goldenLayout as any).generateAndMaximiseDummyStack(c.parent, layout.maximisedItemId);
           }
