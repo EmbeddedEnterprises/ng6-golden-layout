@@ -42,16 +42,19 @@ const CONFIG: IExtendedGoldenLayoutConfig = {
         type: 'component',
         componentName: 'app-test',
         title: 'Test 1',
+        id: 'foobar',
       },
       {
         type: 'component',
         componentName: 'app-test',
         title: 'Test 2',
+        id: 'foobar2',
       },
       {
         type: 'component',
         componentName: 'app-tested',
         title: 'Test 3',
+        id: 'foobar3',
       }
     ]
   }],
@@ -121,14 +124,14 @@ export class RootComponent {
           type: "component",
           componentName: "app-test",
           title: "First",
-      }).then(x => (x.instance as TestComponent).glOnShow());
+      }, 'foobar3').then(x => (x.instance as TestComponent).glOnShow());
     }, 5000);
     setTimeout(() => {
       this.layout.createNewComponent({
           type: "component",
           componentName: "app-test",
           title: "Second",
-      })
+      }, 'foobar')
     }, 10000);
     this.layout.addEvent('tabActivated', () => {
       console.log(arguments);

@@ -462,25 +462,62 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     return null;
   }
 
-  public createNewComponent(config: GoldenLayout.ComponentConfig): Promise<ComponentRef<any>> {
+  public getComponents(): { [id: string]: GoldenLayout.ContentItem } {
+    return (this.goldenLayout as any)._getAllComponents();
+  }
+
+  public closeComponent(component: string) {
+    const c = GetComponentFromLayoutManager(this.goldenLayout, component);
+    if (!c) {
+      return;
+    }
+    c.remove();
+  }
+
+  public focusComponent(component: string) {
+    const c = GetComponentFromLayoutManager(this.goldenLayout, component);
+    if (!c) {
+      return;
+    }
+    c.parent.setActiveContentItem(c);
+  }
+
+  public createNewComponent(config: GoldenLayout.ComponentConfig, componentToDock?: string): Promise<ComponentRef<any>> {
     if (!this.goldenLayout) {
       throw new Error("golden layout is not initialized");
     }
     let myConfig: GoldenLayout.ItemConfig = config;
     const root = this.goldenLayout.root;
     let element: GoldenLayout.ContentItem = null;
-    if (!root.contentItems || root.contentItems.length === 0) {
-      element = root;
-      // Ensure there is a stack when closing ALL items and creating a new item.
-      myConfig = {
-        type: 'stack',
-        content: [{
-          ...myConfig,
-          type: 'component',
-        }],
-      };
+    if (componentToDock) {
+      const c = GetComponentFromLayoutManager(this.goldenLayout, componentToDock);
+      if (c.parent.isStack) {
+        element = c.parent;
+      } else {
+        const stack = this.goldenLayout.createContentItem({
+          type: 'stack',
+          width: c.parent.config.width,
+          height: c.parent.config.height,
+          content: [],
+        }) as any;
+        (c.parent.replaceChild as any)(c, stack, false);
+        stack.addChild(c);
+        element = stack;
+      }
     } else {
-      element = this.findStack(root.contentItems);
+      if (!root.contentItems || root.contentItems.length === 0) {
+        element = root;
+        // Ensure there is a stack when closing ALL items and creating a new item.
+        myConfig = {
+          type: 'stack',
+          content: [{
+            ...myConfig,
+            type: 'component',
+          }],
+        };
+      } else {
+        element = this.findStack(root.contentItems);
+      }
     }
     if (element === null) {
       throw new Error("this should never happen!");
