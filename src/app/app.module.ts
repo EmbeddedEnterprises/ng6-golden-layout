@@ -121,7 +121,7 @@ export class RootComponent {
           type: "component",
           componentName: "app-test",
           title: "First",
-      })
+      }).then(x => (x.instance as TestComponent).glOnShow());
     }, 5000);
     setTimeout(() => {
       this.layout.createNewComponent({

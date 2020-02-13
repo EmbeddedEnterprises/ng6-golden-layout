@@ -462,7 +462,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     return null;
   }
 
-  public createNewComponent(config: GoldenLayout.ComponentConfig) {
+  public createNewComponent(config: GoldenLayout.ComponentConfig): Promise<ComponentRef<any>> {
     if (!this.goldenLayout) {
       throw new Error("golden layout is not initialized");
     }
@@ -488,6 +488,14 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
 
     const content = this.goldenLayout.createContentItem(myConfig) as any;
     element.addChild(content);
+    if (content.isComponent) {
+      // Usually
+      return content.instance;
+    } else if (content.isStack && content.contentItems.length === 1) {
+      return content[0].instance; // The case when this is the first component.
+    } else {
+      return content;
+    }
   }
 
   private findStack(contentItems: GoldenLayout.ContentItem[]): GoldenLayout.ContentItem {
