@@ -21,6 +21,7 @@ import {
   GlOnUnload,
   IExtendedGoldenLayoutConfig,
   IExtendedGoldenLayoutContainer,
+  GoldenLayoutContainer,
 } from 'ngx-golden-layout';
 import { BehaviorSubject } from 'rxjs';
 import { GlHeaderItem } from 'projects/ngx-golden-layout/src/lib/hooks';
@@ -55,7 +56,7 @@ const CONFIG: IExtendedGoldenLayoutConfig = {
     ]
   }],
   settings: {
-    maximiseAllItems: true,
+    maximiseAllItems: false,
   }
 };
 
@@ -149,7 +150,10 @@ export class TestComponent implements GlOnPopout, GlOnClose, GlOnHide, GlOnShow,
   glOnHide(): void {
     console.log('glOnHide');
   }
-  constructor(public test: TestService) { }
+  constructor(public test: TestService, @Inject(GoldenLayoutContainer) private container: GoldenLayout.Container) {
+    container.parent.parent.on('maximised', () => console.log(container, 'got maximised'));
+    container.parent.parent.on('minimised', () => console.log(container, 'got minimised'));
+  }
 
   glOnPopout() {
     console.log('glOnPopout');

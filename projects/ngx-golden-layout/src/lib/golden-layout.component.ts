@@ -59,7 +59,7 @@ contentItem.config &&
 (contentItem.config as GoldenLayout.ComponentConfig).componentState &&
 (contentItem.config as GoldenLayout.ComponentConfig).componentState.originalId;
 
-export const GetComponentFromLayoutManager = (lm: GoldenLayout, id: string): any => {
+export const GetComponentFromLayoutManager = (lm: GoldenLayout, id: string): GoldenLayout.ContentItem => {
   const itemList = lm.root.getItemsById(id);
   if (itemList.length !== 1) {
     console.warn('non unique ID found: ' + id);
@@ -67,10 +67,16 @@ export const GetComponentFromLayoutManager = (lm: GoldenLayout, id: string): any
   }
   return itemList[0];
 };
-const originalComponent = (contentItem: GoldenLayout.ContentItem) => GetComponentFromLayoutManager(
-  contentItem.layoutManager,
-  (contentItem.config as GoldenLayout.ComponentConfig).componentState.originalId,
-);
+const originalComponent = (contentItem: GoldenLayout.ContentItem): any => {
+  const comp = GetComponentFromLayoutManager(
+    contentItem.layoutManager,
+    (contentItem.config as GoldenLayout.ComponentConfig).componentState.originalId,
+  );
+  if (!comp.isComponent) {
+    throw new Error('Expected component');
+  }
+  return comp;
+};
 const tabFromId = (contentItem: GoldenLayout.ContentItem) => {
   const ci = originalComponent(contentItem);
   return ci ? ci.tab : undefined;
@@ -520,21 +526,37 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     this.goldenLayout = new GoldenLayout(layout, $(this.el.nativeElement));
     const origPopout = this.goldenLayout.createPopout.bind(this.goldenLayout);
     this.goldenLayout.createPopout = (item: GoldenLayout.ContentItem, dim, parent, index) => {
+      /**
+       * Traverse the component tree below the item we're trying to pop out.
+       * This has basically two cases:
+       * a) we have a component to popout (or end up at a component somewhen)
+       *    for components, contentItems is either undefined or empty, so ignore it
+       *    during the children push.
+       *    however, for components, we need to check for glOnPopout and call it.
+       * b) everything else, where contentItems is a non-empty array.
+       *    For these parts, we need to consider all children recursively.
+       *
+       * Here, an iterative algorithm was chosen.
+       */
       const rec = [item];
       while(rec.length) {
         const itemToProcess = rec.shift();
-        rec.push(...itemToProcess.contentItems);
+        if (itemToProcess.contentItems && itemToProcess.contentItems.length > 0) {
+          rec.push(...itemToProcess.contentItems);
+        }
         if (itemToProcess.isComponent) {
           const component = (itemToProcess as any).container.__ngComponent;
           if (component && implementsGlOnPopout(component)) {
             component.glOnPopout();
           }
         }
-        console.log(itemToProcess);
       }
-      console.log('beforepopout', item);
       return origPopout(item, dim, parent, index);
     }
+    /**
+     * buildComponentMap creates an object of all opened components below the given item.
+     * object keys are component IDs, object values the component with the ID.
+     */
     const buildComponentMap = (item: GoldenLayout.ContentItem) => {
       let ret = {};
       for (const ci of item.contentItems) {
@@ -552,6 +574,14 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     };
     (this.goldenLayout as any)._getAllComponents = () => buildComponentMap(this.goldenLayout.root);
     (this.goldenLayout as any).generateAndMaximiseDummyStack = (parent, item) => {
+      /**
+       * This function creates a dummy stack, which is being used if 'maximiseAllItems' is true.
+       * The dummy stack contains a dummy component for each component opened in the real layout.
+       * It will furthermore track component closes/spawns and create/close the dummy components accordingly.
+       * parent is the parent of the item we want to maximise
+       * item is the item which was active when we wanted to maximise it.
+       * required to set the active item index.
+       */
       const openedComponents = buildComponentMap(this.goldenLayout.root);
       const componentIdList = Object.keys(openedComponents);
       if (componentIdList.length === 0) {
@@ -565,6 +595,9 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
         return;
       }
 
+      /**
+       * At this point, there are at least two children, so use the dummy component.
+       */
       const config = {
         type: 'stack',
         content: componentIdList.map(k => ({
@@ -573,7 +606,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
           title: openedComponents[k].config.title,
           reorderEnabled: false,
           componentState: {
-            originalId: k,
+            originalId: k, // pass in the ID of the original component as parameter.
           },
         })),
         isClosable: false,
@@ -581,22 +614,33 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
         state: 'dummy',
         activeItemIndex: componentIdList.findIndex(j => j === (item || parent._activeContentItem.id)),
       }
+      // add this item as first child ever, causing golden-layout to create a stack object
       rootContentItem.addChild(config, 0);
 
+      // Fetch the stack
       const myStack = rootContentItem.contentItems[0] as GoldenLayout.ContentItem;
-      const teardown$ = new Subject();
+      // Setup an __wrapperMaximisedItemId in order to setActiveContentItem on the underlying stack later.
       (this.goldenLayout as any).__wrapperMaximisedItemId = parent._activeContentItem.id;
       (myStack as any).activeContentItem$.subscribe((ci) => {
+        // Setup the __wrapperMaximisedItemId lateron.
         (this.goldenLayout as any).__wrapperMaximisedItemId = ci.config.componentState.originalId;
       });
+
+      const teardown$ = new Subject();
       myStack.on('minimised', () => {
+        // Dummy stack was minimised, so enforce all dummy components to be disposed
+        // and dispose the dummy stack as well.
         console.log('minimised', myStack);
         (this.goldenLayout as any).__wrapperMaximisedItemId = null;
         teardown$.next();
         teardown$.complete();
         myStack.remove()
       });
+      // Maximise the dummy stack.
       myStack.toggleMaximise();
+
+      // Whenever a tab is being created or closed, perform a diff algorithm
+      // on the active tabs list and create or delete the dummy tabs.
       this.tabsList.pipe(
         takeUntil(teardown$),
         distinctUntilChanged((a, b) => {
@@ -607,13 +651,16 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
       ).subscribe(targetState => {
         const workingCopy = { ...targetState };
         const tabs = new Set(Object.keys(workingCopy));
+        // currently opened tabs
         const openedTabs = new Set(myStack.contentItems.map(ci => {
           return (ci.config as any).componentState.originalId;
         }));
         for (const key of tabs) {
           if (openedTabs.has(key)) {
+            // item is both currently opened in dummy and background, nothing to do
             openedTabs.delete(key);
           } else {
+            // item is not opened in dummy, create a component
             myStack.addChild({
               type: 'component',
               componentName: 'gl-wrapper',
@@ -625,12 +672,14 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
             } as any)
           }
         }
+        // The remaining tabs are opened in the dummy but not in the background, so close the dummy.
         for (const tab of openedTabs) {
           const tabObj = myStack.contentItems.find(j => (j.config as any).componentState.originalId === tab);
           tabObj.remove();
         }
       });
     };
+
     this.goldenLayout.on('popIn', () => {
       console.log('popIn');
       this.poppedIn = true;
@@ -642,6 +691,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     });
 
     // Overwrite the 'getComponent' method to dynamically resolve JS components.
+    // We need to do this, because the component map is not flexible enough for us since we can dynamically chainload plugins.
     this.goldenLayout.getComponent = (type) => {
       if (isDevMode()) {
         console.log(`Resolving component ${type}`);
