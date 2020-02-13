@@ -273,7 +273,7 @@ MyStack.prototype['addChild'] = function(contentItem: GoldenLayout.ItemConfig, i
   }
 };
 MyStack.prototype['setSize'] = function() {
-  if (this.layoutManager._maximisedItem === this) {
+  if (this.layoutManager._maximisedItem === this && this.layoutManager.config.settings.maximiseAllItems === true) {
     // Actually enforce that this item will be the correct size
     this.element.width(this.layoutManager.container.width());
     this.element.height(this.layoutManager.container.height());
