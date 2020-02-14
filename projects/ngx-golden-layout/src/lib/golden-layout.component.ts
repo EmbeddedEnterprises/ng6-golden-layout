@@ -758,6 +758,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
           customHeaderElement.childNodes.forEach(e => customHeaderElement.removeChild(e));
           element.destroy();
           element = null;
+          stack.header._updateTabSizes();
         }
       };
       const bootstrapComponent = (ct: Type<any>, tokens: StaticProvider[], injector: Injector) => {
@@ -769,6 +770,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
         const headerInjector = Injector.create(tokens, injector);
         element = this.viewContainer.createComponent(factory, undefined, headerInjector);
         customHeaderElement.prepend(element.location.nativeElement);
+        stack.header._updateTabSizes();
       };
 
       // Wait until the content item is loaded and done
