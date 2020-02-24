@@ -53,6 +53,10 @@
                   "type": "initial",
                   "maximumWarning": "2mb",
                   "maximumError": "5mb"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "6kb"
                 }
               ]
             }
@@ -100,6 +104,11 @@
           "options": {
             "tsConfig": "projects/ngx-golden-layout/tsconfig.lib.json",
             "project": "projects/ngx-golden-layout/ng-package.json"
+          },
+          "configurations": {
+            "production": {
+              "tsConfig": "projects/ngx-golden-layout/tsconfig.lib.prod.json"
+            }
           }
         },
         "test": {
@@ -135,6 +144,11 @@
           "options": {
             "tsConfig": "projects/panel-library/tsconfig.lib.json",
             "project": "projects/panel-library/ng-package.json"
+          },
+          "configurations": {
+            "production": {
+              "tsConfig": "projects/panel-library/tsconfig.lib.prod.json"
+            }
           }
         },
         "test": {
@@ -158,6 +172,10 @@
           }
         }
       }
-    }},
-  "defaultProject": "ngx-golden-layout-testbed"
+    }
+  },
+  "defaultProject": "ngx-golden-layout-testbed",
+  "cli": {
+    "analytics": "0a0a5654-f59c-499a-85ce-72b60a6c8c50"
+  }
 }

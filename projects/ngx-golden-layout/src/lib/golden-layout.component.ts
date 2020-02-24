@@ -823,6 +823,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     this.goldenLayout.on('itemDropped', this.resumeStateChange);
     this.goldenLayout.on('tabActivated', this.pushTabActivated);
     this.goldenLayout.on(lm.__lm.utils.EventEmitter.ALL_EVENT, this._eventEmitter.emit, this._eventEmitter);
+    this._eventEmitter.emit('initialised');
   }
 
   /**

@@ -16,7 +16,7 @@ import { WrapperComponent } from './wrapper.component';
   imports: [CommonModule]
 })
 export class GoldenLayoutModule {
-  public static forRoot(types: config.ComponentType[], fallback?: Type<any>, pluginDeps?: config.PluginDependencyType[]): ModuleWithProviders {
+  public static forRoot(types: config.ComponentType[], fallback?: Type<any>, pluginDeps?: config.PluginDependencyType[]): ModuleWithProviders<GoldenLayoutModule> {
     return {
       ngModule: GoldenLayoutModule,
       providers: [
