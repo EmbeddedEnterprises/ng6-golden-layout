@@ -69,7 +69,7 @@ Example code could look like this:
 ```ts
 import { of } from 'rxjs';
 
-const INITIAL_LAYOUT = IExtendedGoldenLayoutConifg = {
+const INITIAL_LAYOUT: IExtendedGoldenLayoutConfig = {
   content: [{
     type: 'row',
     content: [{
