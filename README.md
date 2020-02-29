@@ -63,13 +63,13 @@ export class AppModule {}
 
 In the `@NgModule` decorator, under `entryComponents` list all the components that should be rendered within golden layout.
 
-To pass a layout into the golden-layout component, create an `Observable<GoldenLayout.Config>` and pass your layout/root config in. 
+To pass a layout into the golden-layout component, create an `Observable<IExtendedGoldenLayoutConfig>` and pass your layout/root config in. 
 Example code could look like this:
 
 ```ts
 import { of } from 'rxjs';
 
-const INITIAL_LAYOUT = GoldenLayout.Config = {
+const INITIAL_LAYOUT = IExtendedGoldenLayoutConifg = {
   content: [{
     type: 'row',
     content: [{
