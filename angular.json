@@ -32,6 +32,29 @@
             "scripts": []
           },
           "configurations": {
+            "development": {
+              "fileReplacements": [],
+              "optimization": false,
+              "outputHashing": "all",
+              "sourceMap": false,
+              "extractCss": true,
+              "namedChunks": false,
+              "aot": false,
+              "extractLicenses": true,
+              "vendorChunk": false,
+              "buildOptimizer": false,
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "2mb",
+                  "maximumError": "5mb"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "6kb"
+                }
+              ]
+            },
             "production": {
               "fileReplacements": [
                 {
@@ -65,7 +88,7 @@
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": {
-            "browserTarget": "ngx-golden-layout-testbed:build"
+            "browserTarget": "ngx-golden-layout-testbed:build:development"
           },
           "configurations": {
             "production": {

@@ -63,16 +63,16 @@ const CONFIG: IExtendedGoldenLayoutConfig = {
   }
 };
 
-@MultiWindowService<FooService>('FooService')
 @Injectable()
+@MultiWindowService<FooService>('FooService')
 export class FooService {
   constructor() {
     console.log(`Create FooService`);
   }
 }
 
-@MultiWindowService<TestService>('TestService')
 @Injectable()
+@MultiWindowService<TestService>('TestService')
 export class TestService {
   public id: string;
   constructor(private _foo: FooService) {
