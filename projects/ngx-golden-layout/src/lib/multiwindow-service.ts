@@ -42,6 +42,16 @@ export function MultiWindowService<T>(uniqueName: string) {
       }
       return rootWindow.__services.get(uniqueName);
     }) as any;
+    if (rootWindowIsMyWindow) {
+      // https://github.com/angular/angular/issues/36120
+      // ɵfac is created before this decorator runs.
+      // so copy over the static properties.
+      for (const prop in constr) {
+        if (constr.hasOwnProperty(prop)) {
+          newConstructor[prop] = constr[prop];
+        }
+      }
+    }
     try {
       if (rootWindowIsMyWindow) {
         const metadata = (Reflect as any).getMetadata('design:paramtypes', constr);
