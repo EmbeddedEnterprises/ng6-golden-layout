@@ -529,7 +529,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
       // Usually
       return content.instance;
     } else if (content.isStack && content.contentItems.length === 1) {
-      return content[0].instance; // The case when this is the first component.
+      return content.contentItems[0].instance; // The case when this is the first component.
     } else {
       return content;
     }
