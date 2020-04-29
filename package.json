@@ -33,7 +33,7 @@
     "@types/node": "^12.11.1",
     "core-js": "^3.1.4",
     "golden-layout": "^1.5.9",
-    "jquery": "^3.4.1",
+    "jquery": "^3.5.0",
     "ng-packagr": "^9.0.0",
     "ts-node": "~7.0.0",
     "tslint": "~5.18.0",
