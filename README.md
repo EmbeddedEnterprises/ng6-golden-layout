@@ -312,6 +312,43 @@ export class MyModule { }
 
 When you have setup this, the binding will automatically create this component whenever a panel type couldn't be found.
 
+## Nested layouts
+
+With this module it is possible to initialize nested instances of golden-layout.
+Therefore you can have several different, independent docking steps.
+
+To use it, call `GoldenLayoutModule.forChild()` within the providers array of a nested component in your application and initialize 
+a new GoldenLayoutComponent.
+
+```ts
+@Component({
+  selector: 'app-nested-gl',
+  templateUrl: './nested.component.html',
+  styleUrls: ['./nested.component.scss'],
+  providers: [
+    GoldenLayoutModule.forChild(components),
+  ]
+})
+export class NestedComponent implements OnInit {
+
+  public layout$ = new BehaviorSubject(LAYOUT_CONFIG);
+
+  constructor() { }
+
+  ngOnInit(): void { }
+  stateChange() {
+
+  }
+  tabActivated() {
+
+  }
+```
+
+Template:
+
+```html
+<golden-layout-root #comp [layout]="layout$" (stateChanged)="stateChange()" (tabActivated)="tabActivated($event)"></golden-layout-root>
+```
 ## Current state
 
 This binding is stable but by far not feature complete.

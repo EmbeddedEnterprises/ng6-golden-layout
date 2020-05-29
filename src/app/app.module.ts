@@ -1,6 +1,6 @@
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { NgModule, Component, Injectable, OnInit, OnDestroy, Inject, ViewChild, HostListener } from '@angular/core';
+import { NgModule, Component, Injectable, OnInit, OnDestroy, Inject, ViewChild } from '@angular/core';
 import * as GoldenLayout from 'golden-layout';
 import {
   GoldenLayoutModule,
@@ -25,6 +25,9 @@ import {
 } from 'ngx-golden-layout';
 import { BehaviorSubject } from 'rxjs';
 import { GlHeaderItem } from 'projects/ngx-golden-layout/src/lib/hooks';
+import { NestedComponent } from './nested/nested.component';
+import { SubcomponentComponent } from './nested/subcomponent/subcomponent.component';
+import { OthercomponentComponent } from './nested/othercomponent/othercomponent.component';
 
 const CONFIG2: GoldenLayout.Config = {
   content: [{
@@ -55,7 +58,13 @@ const CONFIG: IExtendedGoldenLayoutConfig = {
         componentName: 'app-tested',
         title: 'Test 3',
         id: 'foobar3',
-      }
+      },
+      {
+        type: 'component',
+        componentName: 'nested',
+        title: 'Nested Golden-Layout',
+        id: 'foobar4',
+      },
     ]
   }],
   settings: {
@@ -245,6 +254,10 @@ export const COMPONENTS: ComponentType[] = [
   {
     name: 'app-tested',
     type: TestedComponent,
+  },
+  {
+    name: 'nested',
+    type: NestedComponent,
   }
 ];
 @NgModule({
@@ -254,6 +267,9 @@ export const COMPONENTS: ComponentType[] = [
     TestedComponent,
     FailComponent,
     HeaderTestComponent,
+    NestedComponent,
+    SubcomponentComponent,
+    OthercomponentComponent,
   ],
   entryComponents: [
     HeaderTestComponent

@@ -2,6 +2,12 @@ import { Injectable, ApplicationRef, Injector } from '@angular/core';
 import { RootWindowService } from './root-window.service';
 
 @Injectable()
+export class MockWindowSynchronizerService {
+  restoreAppRefTick() {}
+  onUnload() {}
+}
+
+@Injectable()
 export class WindowSynchronizerService {
   private topWindow: Window;
   private isChildWindow: boolean;
@@ -40,6 +46,10 @@ export class WindowSynchronizerService {
         ar._zone.run(() => ar.__tick());
       }
     };
+  }
+
+  public restoreAppRefTick() {
+    this.appref.tick = (this.appref as any).__tick;
   }
 
   public onUnload() {

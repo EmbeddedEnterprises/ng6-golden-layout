@@ -10,8 +10,8 @@ export class ComponentRegistryService {
   private awaitedComponents = new Map<string, Deferred<Type<any>>>();
 
   constructor(
-    @Inject(GoldenLayoutComponents) @Optional() initialComponents: ComponentType[],
-    private pluginRegistry: PluginRegistryService,
+    @Inject(GoldenLayoutComponents) @Optional() initialComponents?: ComponentType[],
+    @Optional() private pluginRegistry?: PluginRegistryService,
   ) {
     (initialComponents || []).forEach(c => this.registerComponent(c));
     this.registerComponent({
@@ -19,7 +19,7 @@ export class ComponentRegistryService {
       type: WrapperComponent,
     });
 
-    this.pluginRegistry.pluginLoaded$.subscribe(({ id, module }) => {
+    this.pluginRegistry?.pluginLoaded$.subscribe(({ id, module }) => {
       const registeredTokens = module.injector.get(GoldenLayoutComponents, []);
       console.log('Plugin', id, 'wants to register', registeredTokens.length, 'components');
       registeredTokens.forEach(c => this.registerComponent({ ...c, plugin: id }));

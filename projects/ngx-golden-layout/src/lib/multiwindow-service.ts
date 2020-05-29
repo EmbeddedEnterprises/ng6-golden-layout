@@ -1,5 +1,4 @@
 export function MultiWindowInit(): void {
-  console.log('MultiWindowInit');
   if (!window.opener) {
     if (!(window as any).__services && !(window as any).__serviceConstructors) {
       (window as any).__services = new (window as any).Map();
@@ -29,8 +28,9 @@ export function MultiWindowService<T>(uniqueName: string) {
     const rootWindow = (window.opener || window) as any;
     const rootWindowIsMyWindow = rootWindow === window;
     if (rootWindowIsMyWindow) {
-      if (rootWindow.__serviceConstructors.has(uniqueName)) {
-        throw new Error(`MultiWindowService(): uniqueName ${uniqueName} already taken.`);
+      const constrGot = rootWindow.__serviceConstructors.get(uniqueName);
+      if (constrGot && constrGot !== constr) {
+        throw new Error(`MultiWindowService(): uniqueName ${uniqueName} already taken by ${constrGot}, wanted by ${constr}`);
       }
       rootWindow.__serviceConstructors.set(uniqueName, constr);
     }

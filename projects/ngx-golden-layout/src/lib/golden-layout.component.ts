@@ -19,6 +19,7 @@ import {
   StaticProvider,
   Type,
   ComponentRef,
+  SkipSelf,
 } from '@angular/core';
 import * as GoldenLayout from 'golden-layout';
 import { ComponentRegistryService } from './component-registry.service';
@@ -191,7 +192,6 @@ const newHeader = function(layoutManager, parent) {
   if (maximise && layoutManager.config.settings.maximiseAllItems === true) {
     header.maximiseButton = new lm.__lm.controls.HeaderButton(header, maximise, 'lm_maximise', () => {
       // The maximise button was clicked, so create a dummy stack, containing a wrapper component for each opened component.
-      console.log('I should maximise all items.');
       if (layoutManager._maximisedItem === parent) {
         parent.toggleMaximise();
       } else {
@@ -224,7 +224,6 @@ lm.__lm.controls.Header = newHeader;
 const origDragProxy = lm.__lm.controls.DragProxy;
 const dragProxy = function(x, y, dragListener, layoutManager, contentItem, originalParent) {
   layoutManager.emit('itemDragged', contentItem);
-  console.log('new dragProxy', contentItem);
   return new origDragProxy(x, y, dragListener, layoutManager, contentItem, originalParent);
 }
 dragProxy._template = origDragProxy._template;
@@ -233,7 +232,6 @@ lm.__lm.controls.DragProxy = dragProxy;
 // Patch the stack in order to have an activeContentItemChanged$ observable
 const origStack = lm.__lm.items.Stack;
 function MyStack(lm, config, parent) {
-  console.log(lm, config, parent, this);
   origStack.call(this, lm, config, parent);
   this.activeContentItem$ = new BehaviorSubject<any>(null);
   const callback = (ci) => {
@@ -299,6 +297,19 @@ const popout = function(config: GoldenLayout.ItemConfig[], dimensions, parent, i
 };
 lm.__lm.controls.BrowserPopout = popout;
 
+
+// Fixup for nested golden-layout instances.
+// nested instances should be able to be docked out completely
+// but the golden layout will recognize its query string and be incorrectly nested.
+const getQueryStringParam = lm.__lm.utils.getQueryStringParam;
+let firstQueryString = true;
+lm.__lm.utils.getQueryStringParam = (param: string) => {
+  if (firstQueryString) {
+    firstQueryString = false;
+    return getQueryStringParam(param);
+  }
+  return null;
+}
 @Component({
   selector: 'golden-layout-root',
   styles: [`
@@ -341,8 +352,6 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     this.tabActivated.emit(ci);
   }
 
-  private isChildWindow: boolean;
-
   private fallbackType: ComponentInitCallback = null;
   private layoutSubscription: Subscription;
   private openedComponents = [];
@@ -360,24 +369,23 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     private rootService: RootWindowService,
     private componentRegistry: ComponentRegistryService,
     private viewContainer: ViewContainerRef,
-    private appref: ApplicationRef,
     private componentFactoryResolver: ComponentFactoryResolver,
     private ngZone: NgZone,
     private readonly injector: Injector,
     private windowSync: WindowSynchronizerService,
+    @Optional() @SkipSelf() private parentGoldenLayout: GoldenLayoutComponent,
     @Optional() @Inject(FallbackComponent) private readonly fallbackComponent: any
   ) {
-    this.isChildWindow = this.rootService.isChildWindow();
-
+    console.log(parentGoldenLayout);
     if (!!this.fallbackComponent) {
       this.fallbackType = this.buildConstructor(this.fallbackComponent);
     }
 
-    if (isDevMode()) console.log(`Create@${this.isChildWindow ? 'child' : 'root'}!`);
+    if (isDevMode()) console.log(`Create@${this.rootService.isChildWindow ? 'child' : 'root'}!`);
   }
 
   public ngOnInit(): void {
-    if (isDevMode()) console.log(`Init@${this.isChildWindow ? 'child' : 'root'}!`);
+    if (isDevMode()) console.log(`Init@${this.rootService.isChildWindow ? 'child' : 'root'}!`);
 
     this.layoutSubscription = this.layout.subscribe(layout => {
       this.destroyGoldenLayout();
@@ -411,7 +419,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
 
   public ngOnDestroy(): void {
     if (isDevMode()) {
-      console.log(`Destroy@${this.isChildWindow ? 'child' : 'root'}!`);
+      console.log(`Destroy@${this.rootService.isChildWindow ? 'child' : 'root'}!`);
     }
     this.layoutSubscription.unsubscribe();
 
@@ -419,14 +427,10 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     // this appens in two cases:
     // either the window is closed, after that it's not important to restore the tick method
     // or within the root window, where we HAVE to restore the original tick method
-    this.appref.tick = (this.appref as any).__tick;
+    this.windowSync.restoreAppRefTick();
     this.destroyGoldenLayout();
     // Discard all previously made subscriptions.
     this._eventEmitter._mSubscriptions = { [lm.__lm.utils.EventEmitter.ALL_EVENT]: [] };
-
-    if (this.isChildWindow) {
-      console.log = (console as any).__log;
-    }
   }
 
   public getGoldenLayoutInstance(): GoldenLayout {
@@ -675,7 +679,6 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
       myStack.on('minimised', () => {
         // Dummy stack was minimised, so enforce all dummy components to be disposed
         // and dispose the dummy stack as well.
-        console.log('minimised', myStack);
         (this.goldenLayout as any).__wrapperMaximisedItemId = null;
         teardown$.next();
         teardown$.complete();
@@ -726,7 +729,6 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
     };
 
     this.goldenLayout.on('popIn', () => {
-      console.log('popIn');
       this.poppedIn = true;
       this.openedComponents.forEach(c => {
         if (implementsGlOnPopin(c)) {
@@ -849,7 +851,9 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
         const componentPromise = self.componentRegistry.waitForComponent(componentName);
         componentPromise.then((componentType) => {
           // We got our component type
-          console.log(`Component ${componentName} returned from componentRegistry`);
+          if (isDevMode()) {
+            console.log(`Component ${componentName} returned from componentRegistry`);
+          }
           // Create an instance of the angular component.
           const factory = self.componentFactoryResolver.resolveComponentFactory(componentType);
           let failedComponent: string = null;
