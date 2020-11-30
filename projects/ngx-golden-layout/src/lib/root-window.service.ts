@@ -13,7 +13,7 @@ export class RootWindowService {
     }
   }
 
-  public getRootWindow(): Window {
+  public getRootWindow(): Window & typeof globalThis {
     return this.isChildWindow() ? window.opener : window;
   }
 }

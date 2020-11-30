@@ -9,7 +9,7 @@ export class MockWindowSynchronizerService {
 
 @Injectable()
 export class WindowSynchronizerService {
-  private topWindow: Window;
+  private topWindow: Window & typeof globalThis;
   private isChildWindow: boolean;
   private unloaded = false;
 
@@ -24,7 +24,7 @@ export class WindowSynchronizerService {
     if (this.isChildWindow) {
       window.document.title = window.document.URL;
       (console as any).__log = console.log;
-      console.log = (...args: any[]) => (this.topWindow as any).console.log('[CHILD] =>', ...args);
+      console.log = (...args: any[]) => this.topWindow.console.log('[CHILD] =>', ...args);
     }
 
     // Multi-Window compatibility.
