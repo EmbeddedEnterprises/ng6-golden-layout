@@ -1,5 +1,5 @@
 export function MultiWindowInit(): void {
-  if (!window.opener) {
+  if (!isChildWindow()) {
     if (!(window as any).__services && !(window as any).__serviceConstructors) {
       (window as any).__services = new (window as any).Map();
       (window as any).__serviceConstructors = new (window as any).Map();
@@ -21,11 +21,19 @@ export type Constructor<T> = {
   new (...args: any[]): T;
 }
 
+export function isChildWindow(): boolean {
+  try {
+    return !!window.opener && !!window.opener.location.href;
+  } catch (e) {
+    return false;
+  }
+}
+
 export function MultiWindowService<T>(uniqueName: string) {
   MultiWindowInit();
   return function (constructor: Constructor<T>): Constructor<T> {
     const constr = constructor as any;
-    const rootWindow = (window.opener || window) as any;
+    const rootWindow = (this.isChildWindow() ? window.opener : window) as any;
     const rootWindowIsMyWindow = rootWindow === window;
     if (rootWindowIsMyWindow) {
       const constrGot = rootWindow.__serviceConstructors.get(uniqueName);
