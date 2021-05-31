@@ -33,7 +33,7 @@ export function MultiWindowService<T>(uniqueName: string) {
   MultiWindowInit();
   return function (constructor: Constructor<T>): Constructor<T> {
     const constr = constructor as any;
-    const rootWindow = (this.isChildWindow() ? window.opener : window) as any;
+    const rootWindow = (isChildWindow() ? window.opener : window) as any;
     const rootWindowIsMyWindow = rootWindow === window;
     if (rootWindowIsMyWindow) {
       const constrGot = rootWindow.__serviceConstructors.get(uniqueName);
