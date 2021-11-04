@@ -1,6 +1,6 @@
 import { NgModule } from '@angular/core';
 import { PanelLibraryComponent } from './panel-library.component';
-import { forChild } from 'ngx-golden-layout';
+import { GoldenLayoutModule } from 'ngx-golden-layout';
 
 const TYPES = [{
   name: 'plugin-lib',
@@ -9,7 +9,7 @@ const TYPES = [{
 
 @NgModule({
   declarations: [PanelLibraryComponent],
-  providers: [...forChild(TYPES)],
+  providers: [...GoldenLayoutModule.forChild(TYPES)],
   exports: [PanelLibraryComponent],
   id: 'panel-library',
 })

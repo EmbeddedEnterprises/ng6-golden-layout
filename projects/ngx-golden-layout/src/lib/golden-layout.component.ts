@@ -21,7 +21,7 @@ import {
   ComponentRef,
   SkipSelf,
 } from '@angular/core';
-import * as GoldenLayout from 'golden-layout';
+import GoldenLayout from 'golden-layout';
 import { ComponentRegistryService } from './component-registry.service';
 import { FallbackComponent, FailedComponent } from './fallback';
 import { RootWindowService } from './root-window.service';
@@ -675,7 +675,7 @@ export class GoldenLayoutComponent implements OnInit, OnDestroy {
         (this.goldenLayout as any).__wrapperMaximisedItemId = ci.config.componentState.originalId;
       });
 
-      const teardown$ = new Subject();
+      const teardown$ = new Subject<void>();
       myStack.on('minimised', () => {
         // Dummy stack was minimised, so enforce all dummy components to be disposed
         // and dispose the dummy stack as well.

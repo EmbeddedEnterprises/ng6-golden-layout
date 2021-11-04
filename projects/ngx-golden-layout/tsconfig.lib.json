@@ -5,6 +5,7 @@
     "target": "es2015",
     "declaration": true,
     "inlineSources": true,
+    "allowSyntheticDefaultImports": true,
     "types": [
       "jquery"
     ],
@@ -18,8 +19,7 @@
     "strictMetadataEmit": true,
     "fullTemplateTypeCheck": true,
     "strictInjectionParameters": true,
-    "enableResourceInlining": true,
-    "enableIvy": false
+    "enableResourceInlining": true
   },
   "exclude": [
     "src/test.ts",

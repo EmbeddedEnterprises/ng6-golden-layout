@@ -58,7 +58,7 @@ export class NestedComponent implements OnInit {
   stateChange() {
 
   }
-  tabActivated() {
+  tabActivated(event: any) {
 
   }
 }
