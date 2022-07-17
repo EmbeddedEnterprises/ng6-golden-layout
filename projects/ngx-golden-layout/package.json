@@ -11,8 +11,8 @@
     "tslib": "^2.3.1"
   },
   "peerDependencies": {
-    "@angular/common": "^13.0.0",
-    "@angular/core": "^13.0.0",
+    "@angular/common": "12 - 14",
+    "@angular/core": "12 - 14",
     "jquery": "3.6.0",
     "golden-layout": "1.5.9"
   }
